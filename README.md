@@ -62,7 +62,12 @@
    }
    ```
 
-4. `main` ブランチにpushすると GitHub Actions が自動でGitHub Pagesにデプロイします。
+4. `manifest.json` の `name`/`short_name` と `icon.svg` 内の1文字を新しいアプリに合わせて書き換える
+5. `main` ブランチにpushすると GitHub Actions が自動でGitHub Pagesにデプロイします。
+
+## Chromeへのインストールについて
+
+各アプリはPWAとして、Chromeのアドレスバーからアプリ単体をインストールできます（トップページはインストール対象外）。各アプリディレクトリの `manifest.json` / `icon.svg` / `sw.js` がその設定です。オフラインキャッシュは行わず、インストールを可能にするための最小限の構成です。
 
 ## GitHub Pagesの設定
 
