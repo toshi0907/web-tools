@@ -99,12 +99,26 @@
     border-color: var(--accent);
     color: var(--accent);
   }
+  .downloads button.accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .downloads button.accent:hover {
+    opacity: 0.9;
+    color: #fff;
+  }
   section.block {
     margin-top: 2rem;
   }
   section.block h2 {
     font-size: 1.1rem;
     margin-bottom: 0.8rem;
+  }
+  section.block p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 0.8rem;
   }
 </style>
 </head>
@@ -163,12 +177,20 @@
   </div>
 
   <section class="block">
-    <h2>ダウンロード</h2>
+    <h2>ダウンロード（PNG）</h2>
     <div class="downloads" id="download-buttons"></div>
   </section>
 
+  <section class="block">
+    <h2>ダウンロード（ICO）</h2>
+    <p>16x16 / 32x32 / 48x48 / 256x256 を内包したマルチ解像度の .ico ファイルです。C#のWinFormsアプリなど、<code>Form.Icon</code>やプロジェクトのアプリケーションアイコンとして .ico が必要な場面で利用できます。</p>
+    <div class="downloads">
+      <button class="accent" id="ico-download-btn">favicon.ico をダウンロード</button>
+    </div>
+  </section>
+
   <footer class="page-footer">
-    <p>生成したPNGを favicon.png / apple-touch-icon.png としてサイトに設置してください。</p>
+    <p>生成したPNGを favicon.png / apple-touch-icon.png として、ICOを favicon.ico としてサイトやアプリに設置してください。</p>
   </footer>
 </div>
 
@@ -258,12 +280,75 @@
     link.click();
   }
 
+  function getPngBytes(size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    drawFavicon(canvas);
+    return new Promise((resolve) => {
+      canvas.toBlob(async (blob) => {
+        resolve(new Uint8Array(await blob.arrayBuffer()));
+      }, 'image/png');
+    });
+  }
+
+  function buildIco(images) {
+    const headerSize = 6;
+    const entrySize = 16;
+    const dirSize = headerSize + entrySize * images.length;
+    const totalSize = dirSize + images.reduce((sum, img) => sum + img.data.length, 0);
+
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+    const bytes = new Uint8Array(buffer);
+
+    view.setUint16(0, 0, true);
+    view.setUint16(2, 1, true);
+    view.setUint16(4, images.length, true);
+
+    let offset = dirSize;
+    images.forEach((img, i) => {
+      const entryOffset = headerSize + i * entrySize;
+      const dim = img.size >= 256 ? 0 : img.size;
+      view.setUint8(entryOffset + 0, dim);
+      view.setUint8(entryOffset + 1, dim);
+      view.setUint8(entryOffset + 2, 0);
+      view.setUint8(entryOffset + 3, 0);
+      view.setUint16(entryOffset + 4, 1, true);
+      view.setUint16(entryOffset + 6, 32, true);
+      view.setUint32(entryOffset + 8, img.data.length, true);
+      view.setUint32(entryOffset + 12, offset, true);
+      bytes.set(img.data, offset);
+      offset += img.data.length;
+    });
+
+    return bytes;
+  }
+
+  async function downloadIco() {
+    const icoSizes = [16, 32, 48, 256];
+    const images = [];
+    for (const size of icoSizes) {
+      images.push({ size, data: await getPngBytes(size) });
+    }
+    const icoBytes = buildIco(images);
+    const blob = new Blob([icoBytes], { type: 'image/x-icon' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'favicon.ico';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   for (const size of sizes) {
     const btn = document.createElement('button');
     btn.textContent = `${size}x${size} PNG`;
     btn.addEventListener('click', () => downloadSize(size));
     downloadButtons.appendChild(btn);
   }
+
+  document.getElementById('ico-download-btn').addEventListener('click', downloadIco);
 
   for (const el of [textInput, bgColorInput, textColorInput, shapeSelect, fontSelect]) {
     el.addEventListener('input', updatePreview);
