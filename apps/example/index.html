@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サンプルアプリ - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>サンプルアプリ</h1>
+    <p>これはアプリのひな形です。カウンターの動作を確認できます。</p>
+  </header>
+
+  <p>カウント: <strong id="count">0</strong></p>
+  <button id="increment">+1</button>
+</div>
+
+<script>
+  let count = 0;
+  const countEl = document.getElementById('count');
+  document.getElementById('increment').addEventListener('click', () => {
+    count += 1;
+    countEl.textContent = String(count);
+  });
+</script>
+</body>
+</html>
