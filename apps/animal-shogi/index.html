@@ -8,6 +8,28 @@
 <style>
   .page { max-width: 620px; }
 
+  .mode-select {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 0.7rem 0.6rem;
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    background: var(--card-bg);
+    color: var(--fg);
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .mode-btn.active {
+    border-color: var(--accent);
+    background: #fff2b8;
+    color: #7a4a00;
+  }
+
   .rules {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -199,8 +221,13 @@
   <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
   <header class="page-header">
     <h1>🐾 どうぶつしょうぎ</h1>
-    <p>3×4のミニ将棋。ライオンをつかまえたら勝ち！ふたりで交代しながら遊んでね。</p>
+    <p>3×4のミニ将棋。ライオンをつかまえたら勝ち！コンピューターと1人で、またはふたりで交代しながら遊べるよ。</p>
   </header>
+
+  <div class="mode-select">
+    <button class="mode-btn" id="modeOneBtn">🤖 １人であそぶ（コンピューター対戦）</button>
+    <button class="mode-btn" id="modeTwoBtn">🧑‍🤝‍🧑 ふたりであそぶ</button>
+  </div>
 
   <details class="rules">
     <summary>あそびかた</summary>
@@ -260,8 +287,18 @@
   const handPiecesElS = document.getElementById('handPiecesS');
   const handPiecesElG = document.getElementById('handPiecesG');
   const restartBtn = document.getElementById('restartBtn');
+  const modeOneBtn = document.getElementById('modeOneBtn');
+  const modeTwoBtn = document.getElementById('modeTwoBtn');
+
+  const HUMAN = 'S';
+  const AI = 'G';
+  const AI_DEPTH = 3;
+  const WIN_SCORE = 100000;
+  const PIECE_VALUE = { lion: 0, elephant: 3, giraffe: 3, chick: 1, hen: 4 };
 
   let board, turn, hands, selected, gameOver, winnerText;
+  let mode = 'one';
+  let aiThinking = false;
 
   function homeRow(owner) {
     return owner === 'S' ? ROWS - 1 : 0;
@@ -293,7 +330,14 @@
     selected = null;
     gameOver = false;
     winnerText = '';
+    aiThinking = false;
     render();
+  }
+
+  function setMode(newMode) {
+    if (mode === newMode) return;
+    mode = newMode;
+    resetGame();
   }
 
   function getDirections(type, owner) {
@@ -351,6 +395,153 @@
     return r !== opponentHomeRow(owner);
   }
 
+  function cloneBoard(b) {
+    return b.map((row) => row.map((cell) => (cell ? { type: cell.type, owner: cell.owner } : null)));
+  }
+  function cloneHands(h) {
+    return { S: h.S.slice(), G: h.G.slice() };
+  }
+
+  function generateMoves(b, h, owner) {
+    const moves = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const p = b[r][c];
+        if (p && p.owner === owner) {
+          for (const dest of getMoves(b, r, c)) {
+            moves.push({ kind: 'move', r, c, tr: dest.r, tc: dest.c });
+          }
+        }
+      }
+    }
+    const types = Array.from(new Set(h[owner]));
+    for (const type of types) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (b[r][c]) continue;
+          if (type === 'chick' && !canDropChickAt(owner, r)) continue;
+          moves.push({ kind: 'drop', pieceType: type, tr: r, tc: c });
+        }
+      }
+    }
+    return moves;
+  }
+
+  function applySimMove(b, h, owner, move) {
+    const nb = cloneBoard(b);
+    const nh = cloneHands(h);
+    let capturedLion = false;
+    if (move.kind === 'move') {
+      const piece = nb[move.r][move.c];
+      const captured = nb[move.tr][move.tc];
+      if (captured) {
+        if (captured.type === 'lion') capturedLion = true;
+        const handType = captured.type === 'hen' ? 'chick' : captured.type;
+        nh[owner].push(handType);
+      }
+      nb[move.tr][move.tc] = piece;
+      nb[move.r][move.c] = null;
+      if (piece.type === 'chick' && move.tr === opponentHomeRow(owner)) {
+        piece.type = 'hen';
+      }
+    } else {
+      nb[move.tr][move.tc] = { type: move.pieceType, owner };
+      const idx = nh[owner].indexOf(move.pieceType);
+      nh[owner].splice(idx, 1);
+    }
+    return { board: nb, hands: nh, capturedLion };
+  }
+
+  function evaluate(b, h) {
+    let score = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const p = b[r][c];
+        if (!p) continue;
+        const sign = p.owner === AI ? 1 : -1;
+        score += sign * PIECE_VALUE[p.type];
+        if (p.type === 'chick' || p.type === 'hen') {
+          const advance = p.owner === AI ? r : (ROWS - 1 - r);
+          score += sign * advance * 0.3;
+        }
+      }
+    }
+    for (const type of h[AI]) score += PIECE_VALUE[type] * 0.9;
+    for (const type of h[HUMAN]) score -= PIECE_VALUE[type] * 0.9;
+    return score;
+  }
+
+  function minimax(b, h, ownerToMove, depth, alpha, beta) {
+    const moves = generateMoves(b, h, ownerToMove);
+    if (moves.length === 0) return evaluate(b, h);
+    let best = ownerToMove === AI ? -Infinity : Infinity;
+    for (const move of moves) {
+      const { board: nb, hands: nh, capturedLion } = applySimMove(b, h, ownerToMove, move);
+      let score;
+      if (capturedLion) {
+        score = ownerToMove === AI ? WIN_SCORE + depth : -WIN_SCORE - depth;
+      } else if (depth <= 1) {
+        score = evaluate(nb, nh);
+      } else {
+        score = minimax(nb, nh, opponentOf(ownerToMove), depth - 1, alpha, beta);
+      }
+      if (ownerToMove === AI) {
+        if (score > best) best = score;
+        if (best > alpha) alpha = best;
+      } else {
+        if (score < best) best = score;
+        if (best < beta) beta = best;
+      }
+      if (beta <= alpha) break;
+    }
+    return best;
+  }
+
+  function chooseAiMove() {
+    const moves = generateMoves(board, hands, AI);
+    if (moves.length === 0) return null;
+    let alpha = -Infinity;
+    const beta = Infinity;
+    let bestScore = -Infinity;
+    let bestMoves = [];
+    for (const move of moves) {
+      const { board: nb, hands: nh, capturedLion } = applySimMove(board, hands, AI, move);
+      const score = capturedLion
+        ? WIN_SCORE + AI_DEPTH
+        : minimax(nb, nh, HUMAN, AI_DEPTH - 1, alpha, beta);
+      if (score > bestScore + 0.001) {
+        bestScore = score;
+        bestMoves = [move];
+      } else if (Math.abs(score - bestScore) <= 0.001) {
+        bestMoves.push(move);
+      }
+      if (score > alpha) alpha = score;
+    }
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+  }
+
+  function maybeTriggerAi() {
+    if (!gameOver && mode === 'one' && turn === AI) {
+      aiThinking = true;
+      render();
+      setTimeout(runAiMove, 450);
+    }
+  }
+
+  function runAiMove() {
+    if (gameOver) return;
+    const move = chooseAiMove();
+    aiThinking = false;
+    if (move) {
+      if (move.kind === 'move') {
+        handleBoardMove(move.r, move.c, move.tr, move.tc);
+      } else {
+        handleDrop(move.pieceType, move.tr, move.tc);
+      }
+    }
+    render();
+  }
+
   function handleBoardMove(fromR, fromC, toR, toC) {
     const piece = board[fromR][fromC];
     const captured = board[toR][toC];
@@ -393,6 +584,9 @@
   }
 
   function winLabel(owner) {
+    if (mode === 'one') {
+      return owner === HUMAN ? '🌸 あなた' : '💧 コンピューター';
+    }
     return owner === 'S' ? '🌸 ピンクチーム' : '💧 みずいろチーム';
   }
 
@@ -412,8 +606,12 @@
     return targets;
   }
 
+  function isAiControlled() {
+    return mode === 'one' && (turn === AI || aiThinking);
+  }
+
   function onCellClick(r, c) {
-    if (gameOver) return;
+    if (gameOver || isAiControlled()) return;
     const legal = legalTargetsForSelection();
     const isLegalTarget = selected && legal.some((m) => m.r === r && m.c === c);
 
@@ -425,6 +623,7 @@
       }
       selected = null;
       render();
+      maybeTriggerAi();
       return;
     }
 
@@ -438,7 +637,7 @@
   }
 
   function onHandPieceClick(owner, type) {
-    if (gameOver) return;
+    if (gameOver || isAiControlled()) return;
     if (owner !== turn) return;
     if (selected && selected.source === 'hand' && selected.type === type) {
       selected = null;
@@ -506,6 +705,9 @@
     renderHand('S', handPiecesElS);
     renderHand('G', handPiecesElG);
 
+    document.querySelector('#handS .hand-label').textContent = mode === 'one' ? '🌸 あなたの もちごま' : '🌸 ピンクの もちごま';
+    document.querySelector('#handG .hand-label').textContent = mode === 'one' ? '💧 コンピューターの もちごま' : '💧 みずいろの もちごま';
+
     if (gameOver) {
       winBannerEl.textContent = winnerText;
       winBannerEl.classList.add('show');
@@ -513,17 +715,28 @@
       turnBannerEl.className = 'turn-banner';
     } else {
       winBannerEl.classList.remove('show');
-      turnBannerEl.textContent = turn === 'S'
-        ? '🌸 ピンクチームの番だよ！'
-        : '💧 みずいろチームの番だよ！';
+      if (mode === 'one') {
+        turnBannerEl.textContent = turn === HUMAN
+          ? '🌸 あなたの番だよ！'
+          : (aiThinking ? '💧 コンピューターが かんがえちゅう…' : '💧 コンピューターの番だよ');
+      } else {
+        turnBannerEl.textContent = turn === 'S'
+          ? '🌸 ピンクチームの番だよ！'
+          : '💧 みずいろチームの番だよ！';
+      }
       turnBannerEl.className = 'turn-banner turn-' + turn;
     }
 
     document.getElementById('handS').style.opacity = gameOver ? 0.6 : (turn === 'S' ? 1 : 0.75);
     document.getElementById('handG').style.opacity = gameOver ? 0.6 : (turn === 'G' ? 1 : 0.75);
+
+    modeOneBtn.classList.toggle('active', mode === 'one');
+    modeTwoBtn.classList.toggle('active', mode === 'two');
   }
 
   restartBtn.addEventListener('click', resetGame);
+  modeOneBtn.addEventListener('click', () => setMode('one'));
+  modeTwoBtn.addEventListener('click', () => setMode('two'));
 
   resetGame();
 })();
