@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>どうぶつしょうぎ - web-tools</title>
 <link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
 <style>
   .page { max-width: 620px; }
 
@@ -269,6 +272,11 @@
   </div>
 </div>
 
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
 <script>
 (function () {
   const ROWS = 4;

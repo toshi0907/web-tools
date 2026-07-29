@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>新しいアプリ - web-tools</title>
 <link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
 </head>
 <body>
 <div class="page">
@@ -16,5 +19,11 @@
 
   <p>ここにアプリの内容を実装します。</p>
 </div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
 </body>
 </html>

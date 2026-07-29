@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>手書きホワイトボード＆メモ - web-tools</title>
 <link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
 <style>
   .toolbar {
     display: flex;
@@ -191,6 +194,11 @@
   </section>
 </div>
 
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
 <script>
   const STORAGE_KEY = 'webtools-whiteboard-memos';
 
