@@ -8,5 +8,10 @@
     "name": "favicon作成ツール",
     "path": "apps/favicon-generator/",
     "description": "文字を入力してシンプルなfaviconを作成し、PNGとしてダウンロードできます。"
+  },
+  {
+    "name": "どうぶつしょうぎ",
+    "path": "apps/animal-shogi/",
+    "description": "3×4のかわいいミニ将棋。ライオン・ゾウ・キリン・ヒヨコでふたり対戦できます。"
   }
 ]

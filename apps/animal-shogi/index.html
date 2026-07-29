@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>どうぶつしょうぎ - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  .page { max-width: 620px; }
+
+  .rules {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.2rem;
+  }
+  .rules summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--accent);
+  }
+  .rules ul {
+    margin: 0.6rem 0 0;
+    padding-left: 1.3rem;
+  }
+  .rules li { margin-bottom: 0.3rem; }
+
+  .turn-banner {
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: bold;
+    padding: 0.7rem;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  .turn-banner.turn-S { background: #ffd6e6; color: #a3175f; }
+  .turn-banner.turn-G { background: #cfeaff; color: #135a9e; }
+
+  .win-banner {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 1rem;
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #fff2b8, #ffd6e6);
+    color: #7a4a00;
+    display: none;
+  }
+  .win-banner.show { display: block; }
+
+  .hand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 4rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 16px;
+    margin-bottom: 0.5rem;
+  }
+  .hand-S { background: #fff0f5; border: 2px dashed #ffb6d0; }
+  .hand-G { background: #eef8ff; border: 2px dashed #a9d8ff; }
+  .hand-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    min-width: 5rem;
+  }
+  .hand-pieces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .hand-piece {
+    position: relative;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+    border: 3px solid transparent;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+  .hand-piece.owner-S { background: #ffd1dc; }
+  .hand-piece.owner-G { background: #cde7ff; }
+  .hand-piece.selected {
+    border-color: #ffb703;
+    transform: scale(1.12);
+  }
+  .hand-piece .count {
+    position: absolute;
+    bottom: -6px;
+    right: -6px;
+    background: #ff8fab;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 999px;
+    padding: 0 5px;
+    line-height: 1.4;
+  }
+  .hand-empty {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 6px;
+    background: #7fc98f;
+    border-radius: 18px;
+    padding: 10px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    user-select: none;
+  }
+  .cell {
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: pointer;
+    position: relative;
+    background: #eafbea;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .cell.row-G { background: #e8f6ff; }
+  .cell.row-S { background: #fff3e0; }
+  .cell.selected {
+    box-shadow: 0 0 0 4px #ffb703 inset;
+    transform: scale(1.04);
+  }
+  .cell.legal::after {
+    content: "";
+    position: absolute;
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background: rgba(255, 183, 3, 0.75);
+  }
+  .cell.legal:hover {
+    transform: scale(1.03);
+  }
+
+  .piece {
+    width: 82%;
+    height: 82%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  }
+  .piece.owner-S { background: #ffd1dc; }
+  .piece.owner-G {
+    background: #cde7ff;
+    transform: rotate(180deg);
+  }
+  .piece .emoji { font-size: 1.6rem; }
+
+  .controls {
+    text-align: center;
+    margin-top: 1.2rem;
+  }
+  .restart-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 0.6rem 1.4rem;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  }
+  .restart-btn:hover { filter: brightness(1.08); }
+
+  .legend {
+    margin-top: 1.4rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .legend div { display: flex; align-items: center; gap: 0.4rem; }
+  .legend .emoji { font-size: 1.3rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>🐾 どうぶつしょうぎ</h1>
+    <p>3×4のミニ将棋。ライオンをつかまえたら勝ち！ふたりで交代しながら遊んでね。</p>
+  </header>
+
+  <details class="rules">
+    <summary>あそびかた</summary>
+    <ul>
+      <li>🦁 ライオン：まわり8マスに1コマ動ける。<b>ライオンをつかまえた方が勝ち</b>。</li>
+      <li>🐘 ゾウ：ななめ4方向に1コマ動ける。</li>
+      <li>🦒 キリン：たて・よこ4方向に1コマ動ける。</li>
+      <li>🐥 ヒヨコ：まえに1コマだけ動ける。いちばん奥まで進むと 🐔 ニワトリ に変身！</li>
+      <li>🐔 ニワトリ：たて・よこ・ななめ前の6方向に1コマ動ける。</li>
+      <li>相手のコマをつかまえると自分の「もちごま」になり、あいた場所に打つことができるよ。</li>
+      <li>🌸ピンクチームのライオンが一番奥まで安全に進んだら、それも勝ち（トライ）！</li>
+    </ul>
+  </details>
+
+  <div id="winBanner" class="win-banner"></div>
+  <div id="turnBanner" class="turn-banner"></div>
+
+  <div id="handG" class="hand hand-G">
+    <span class="hand-label">💧 みずいろの もちごま</span>
+    <div class="hand-pieces" id="handPiecesG"></div>
+  </div>
+
+  <div id="board" class="board"></div>
+
+  <div id="handS" class="hand hand-S">
+    <span class="hand-label">🌸 ピンクの もちごま</span>
+    <div class="hand-pieces" id="handPiecesS"></div>
+  </div>
+
+  <div class="controls">
+    <button class="restart-btn" id="restartBtn">🔄 もういちど あそぶ</button>
+  </div>
+
+  <div class="legend">
+    <div><span class="emoji">🦁</span> ライオン（王さま）</div>
+    <div><span class="emoji">🐘</span> ゾウ（ななめ）</div>
+    <div><span class="emoji">🦒</span> キリン（たてよこ）</div>
+    <div><span class="emoji">🐥</span> ヒヨコ → <span class="emoji">🐔</span> ニワトリ</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const ROWS = 4;
+  const COLS = 3;
+  const PIECE_INFO = {
+    lion: { emoji: '🦁' },
+    elephant: { emoji: '🐘' },
+    giraffe: { emoji: '🦒' },
+    chick: { emoji: '🐥' },
+    hen: { emoji: '🐔' },
+  };
+
+  const boardEl = document.getElementById('board');
+  const turnBannerEl = document.getElementById('turnBanner');
+  const winBannerEl = document.getElementById('winBanner');
+  const handPiecesElS = document.getElementById('handPiecesS');
+  const handPiecesElG = document.getElementById('handPiecesG');
+  const restartBtn = document.getElementById('restartBtn');
+
+  let board, turn, hands, selected, gameOver, winnerText;
+
+  function homeRow(owner) {
+    return owner === 'S' ? ROWS - 1 : 0;
+  }
+  function opponentHomeRow(owner) {
+    return owner === 'S' ? 0 : ROWS - 1;
+  }
+  function opponentOf(owner) {
+    return owner === 'S' ? 'G' : 'S';
+  }
+
+  function initBoard() {
+    const b = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+    b[0][0] = { type: 'giraffe', owner: 'G' };
+    b[0][1] = { type: 'lion', owner: 'G' };
+    b[0][2] = { type: 'elephant', owner: 'G' };
+    b[1][1] = { type: 'chick', owner: 'G' };
+    b[2][1] = { type: 'chick', owner: 'S' };
+    b[3][0] = { type: 'elephant', owner: 'S' };
+    b[3][1] = { type: 'lion', owner: 'S' };
+    b[3][2] = { type: 'giraffe', owner: 'S' };
+    return b;
+  }
+
+  function resetGame() {
+    board = initBoard();
+    turn = 'S';
+    hands = { S: [], G: [] };
+    selected = null;
+    gameOver = false;
+    winnerText = '';
+    render();
+  }
+
+  function getDirections(type, owner) {
+    const fwd = owner === 'S' ? -1 : 1;
+    switch (type) {
+      case 'lion':
+        return [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+      case 'elephant':
+        return [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+      case 'giraffe':
+        return [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      case 'chick':
+        return [[fwd, 0]];
+      case 'hen':
+        return [[-1, 0], [1, 0], [0, -1], [0, 1], [fwd, -1], [fwd, 1]];
+      default:
+        return [];
+    }
+  }
+
+  function inBounds(r, c) {
+    return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+  }
+
+  function getMoves(b, r, c) {
+    const piece = b[r][c];
+    if (!piece) return [];
+    const dirs = getDirections(piece.type, piece.owner);
+    const moves = [];
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (!inBounds(nr, nc)) continue;
+      const target = b[nr][nc];
+      if (!target || target.owner !== piece.owner) {
+        moves.push({ r: nr, c: nc });
+      }
+    }
+    return moves;
+  }
+
+  function isSquareAttackedBy(b, r, c, byOwner) {
+    for (let rr = 0; rr < ROWS; rr++) {
+      for (let cc = 0; cc < COLS; cc++) {
+        const p = b[rr][cc];
+        if (p && p.owner === byOwner) {
+          const moves = getMoves(b, rr, cc);
+          if (moves.some((m) => m.r === r && m.c === c)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function canDropChickAt(owner, r) {
+    return r !== opponentHomeRow(owner);
+  }
+
+  function handleBoardMove(fromR, fromC, toR, toC) {
+    const piece = board[fromR][fromC];
+    const captured = board[toR][toC];
+
+    if (captured) {
+      const handType = captured.type === 'hen' ? 'chick' : captured.type;
+      hands[piece.owner].push(handType);
+    }
+
+    board[toR][toC] = piece;
+    board[fromR][fromC] = null;
+
+    if (piece.type === 'chick' && toR === opponentHomeRow(piece.owner)) {
+      piece.type = 'hen';
+    }
+
+    if (captured && captured.type === 'lion') {
+      gameOver = true;
+      winnerText = winLabel(piece.owner) + ' の勝ち！🎉（ライオンをつかまえた）';
+      return;
+    }
+
+    if (piece.type === 'lion' && toR === opponentHomeRow(piece.owner)) {
+      const opp = opponentOf(piece.owner);
+      if (!isSquareAttackedBy(board, toR, toC, opp)) {
+        gameOver = true;
+        winnerText = winLabel(piece.owner) + ' の勝ち！🎉（トライ成功）';
+        return;
+      }
+    }
+
+    turn = opponentOf(piece.owner);
+  }
+
+  function handleDrop(type, r, c) {
+    board[r][c] = { type, owner: turn };
+    const idx = hands[turn].indexOf(type);
+    hands[turn].splice(idx, 1);
+    turn = opponentOf(turn);
+  }
+
+  function winLabel(owner) {
+    return owner === 'S' ? '🌸 ピンクチーム' : '💧 みずいろチーム';
+  }
+
+  function legalTargetsForSelection() {
+    if (!selected) return [];
+    if (selected.source === 'board') {
+      return getMoves(board, selected.r, selected.c);
+    }
+    const targets = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (board[r][c]) continue;
+        if (selected.type === 'chick' && !canDropChickAt(turn, r)) continue;
+        targets.push({ r, c });
+      }
+    }
+    return targets;
+  }
+
+  function onCellClick(r, c) {
+    if (gameOver) return;
+    const legal = legalTargetsForSelection();
+    const isLegalTarget = selected && legal.some((m) => m.r === r && m.c === c);
+
+    if (isLegalTarget) {
+      if (selected.source === 'board') {
+        handleBoardMove(selected.r, selected.c, r, c);
+      } else {
+        handleDrop(selected.type, r, c);
+      }
+      selected = null;
+      render();
+      return;
+    }
+
+    const piece = board[r][c];
+    if (piece && piece.owner === turn) {
+      selected = { source: 'board', r, c };
+    } else {
+      selected = null;
+    }
+    render();
+  }
+
+  function onHandPieceClick(owner, type) {
+    if (gameOver) return;
+    if (owner !== turn) return;
+    if (selected && selected.source === 'hand' && selected.type === type) {
+      selected = null;
+    } else {
+      selected = { source: 'hand', type };
+    }
+    render();
+  }
+
+  function renderHand(owner, container) {
+    container.innerHTML = '';
+    const counts = {};
+    hands[owner].forEach((t) => { counts[t] = (counts[t] || 0) + 1; });
+    const types = Object.keys(counts);
+    if (types.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'hand-empty';
+      empty.textContent = 'なし';
+      container.appendChild(empty);
+      return;
+    }
+    types.forEach((type) => {
+      const el = document.createElement('div');
+      el.className = 'hand-piece owner-' + owner;
+      if (selected && selected.source === 'hand' && selected.owner === owner && selected.type === type) {
+        el.classList.add('selected');
+      }
+      el.innerHTML = '<span class="emoji">' + PIECE_INFO[type].emoji + '</span>' +
+        '<span class="count">' + counts[type] + '</span>';
+      el.addEventListener('click', () => onHandPieceClick(owner, type));
+      container.appendChild(el);
+    });
+  }
+
+  function render() {
+    boardEl.innerHTML = '';
+    const legal = legalTargetsForSelection();
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (r === 0) cell.classList.add('row-G');
+        if (r === ROWS - 1) cell.classList.add('row-S');
+        if (selected && selected.source === 'board' && selected.r === r && selected.c === c) {
+          cell.classList.add('selected');
+        }
+        if (legal.some((m) => m.r === r && m.c === c)) {
+          cell.classList.add('legal');
+        }
+
+        const piece = board[r][c];
+        if (piece) {
+          const pieceEl = document.createElement('div');
+          pieceEl.className = 'piece owner-' + piece.owner;
+          pieceEl.innerHTML = '<span class="emoji">' + PIECE_INFO[piece.type].emoji + '</span>';
+          cell.appendChild(pieceEl);
+        }
+
+        cell.addEventListener('click', () => onCellClick(r, c));
+        boardEl.appendChild(cell);
+      }
+    }
+
+    renderHand('S', handPiecesElS);
+    renderHand('G', handPiecesElG);
+
+    if (gameOver) {
+      winBannerEl.textContent = winnerText;
+      winBannerEl.classList.add('show');
+      turnBannerEl.textContent = '';
+      turnBannerEl.className = 'turn-banner';
+    } else {
+      winBannerEl.classList.remove('show');
+      turnBannerEl.textContent = turn === 'S'
+        ? '🌸 ピンクチームの番だよ！'
+        : '💧 みずいろチームの番だよ！';
+      turnBannerEl.className = 'turn-banner turn-' + turn;
+    }
+
+    document.getElementById('handS').style.opacity = gameOver ? 0.6 : (turn === 'S' ? 1 : 0.75);
+    document.getElementById('handG').style.opacity = gameOver ? 0.6 : (turn === 'G' ? 1 : 0.75);
+  }
+
+  restartBtn.addEventListener('click', resetGame);
+
+  resetGame();
+})();
+</script>
+</body>
+</html>
