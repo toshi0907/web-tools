@@ -338,6 +338,7 @@
       source = 'camera';
       showStep(stepCamera);
     } catch (err) {
+      showStep(stepStart);
       cameraError.textContent = 'カメラを起動できませんでした（権限が拒否されたか、カメラが見つかりません）。「写真ファイルを選択」をお使いください。';
       cameraError.hidden = false;
     }
