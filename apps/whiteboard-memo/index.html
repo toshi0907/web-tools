@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手書きホワイトボード＆メモ - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+  }
+  .field label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .field input[type="color"] {
+    width: 3rem;
+    height: 2.2rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+  }
+  .field input[type="range"] {
+    width: 8rem;
+  }
+  .field input[type="text"] {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  button {
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.9rem;
+    height: 2.2rem;
+  }
+  button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button.accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.accent:hover {
+    opacity: 0.9;
+    color: #fff;
+  }
+  button.toggle-active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .canvas-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #ffffff;
+    touch-action: none;
+    overflow: hidden;
+  }
+  #board {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: crosshair;
+  }
+  section.block {
+    margin-top: 2rem;
+  }
+  section.block h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+  .memo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  .memo-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card-bg);
+  }
+  .memo-card img {
+    width: 100%;
+    display: block;
+    background: #fff;
+    cursor: pointer;
+  }
+  .memo-card .memo-info {
+    padding: 0.5rem 0.6rem;
+  }
+  .memo-card .memo-info .memo-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .memo-card .memo-info .memo-date {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .memo-card .memo-actions {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0 0.6rem 0.6rem;
+  }
+  .memo-card .memo-actions button {
+    flex: 1;
+    height: auto;
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+  }
+  .empty-state {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>手書きホワイトボード＆メモ</h1>
+    <p>マウス・タッチ・ペンで自由に書き込めるホワイトボードです。書いた内容はメモとしてブラウザに保存できます。</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="pen-color">ペンの色</label>
+      <input id="pen-color" type="color" value="#1c1c1f">
+    </div>
+    <div class="field">
+      <label for="pen-size">太さ（<span id="pen-size-label">4</span>px）</label>
+      <input id="pen-size" type="range" min="1" max="40" value="4">
+    </div>
+    <div class="field">
+      <button id="eraser-btn" type="button">消しゴム</button>
+    </div>
+    <div class="field">
+      <button id="undo-btn" type="button">元に戻す</button>
+    </div>
+    <div class="field">
+      <button id="clear-btn" type="button">全消去</button>
+    </div>
+    <div class="field">
+      <button id="download-btn" type="button">PNG保存</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="board" width="900" height="560"></canvas>
+  </div>
+
+  <div class="toolbar" style="margin-top: 1rem;">
+    <div class="field" style="flex: 1 1 240px;">
+      <label for="memo-title">メモのタイトル</label>
+      <input id="memo-title" type="text" placeholder="無題のメモ" style="width: 100%;">
+    </div>
+    <div class="field">
+      <button id="save-btn" class="accent" type="button">メモとして保存</button>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>保存したメモ</h2>
+    <div id="memo-grid" class="memo-grid"></div>
+    <p id="empty-state" class="empty-state" hidden>保存されたメモはまだありません。</p>
+  </section>
+</div>
+
+<script>
+  const STORAGE_KEY = 'webtools-whiteboard-memos';
+
+  const board = document.getElementById('board');
+  const ctx = board.getContext('2d');
+  const penColor = document.getElementById('pen-color');
+  const penSize = document.getElementById('pen-size');
+  const penSizeLabel = document.getElementById('pen-size-label');
+  const eraserBtn = document.getElementById('eraser-btn');
+  const undoBtn = document.getElementById('undo-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const downloadBtn = document.getElementById('download-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const memoTitle = document.getElementById('memo-title');
+  const memoGrid = document.getElementById('memo-grid');
+  const emptyState = document.getElementById('empty-state');
+
+  let eraserOn = false;
+  let drawing = false;
+  let lastX = 0;
+  let lastY = 0;
+  const undoStack = [];
+  const MAX_UNDO = 25;
+
+  function fillWhite() {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, board.width, board.height);
+  }
+
+  fillWhite();
+
+  function pushUndoSnapshot() {
+    undoStack.push(ctx.getImageData(0, 0, board.width, board.height));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  }
+
+  function getPos(evt) {
+    const rect = board.getBoundingClientRect();
+    const scaleX = board.width / rect.width;
+    const scaleY = board.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function startDraw(evt) {
+    drawing = true;
+    pushUndoSnapshot();
+    const pos = getPos(evt);
+    lastX = pos.x;
+    lastY = pos.y;
+    board.setPointerCapture(evt.pointerId);
+    drawDot(pos.x, pos.y);
+  }
+
+  function drawDot(x, y) {
+    ctx.beginPath();
+    ctx.fillStyle = eraserOn ? '#ffffff' : penColor.value;
+    ctx.arc(x, y, Number(penSize.value) / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function moveDraw(evt) {
+    if (!drawing) return;
+    const pos = getPos(evt);
+    ctx.strokeStyle = eraserOn ? '#ffffff' : penColor.value;
+    ctx.lineWidth = Number(penSize.value);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastX = pos.x;
+    lastY = pos.y;
+  }
+
+  function endDraw(evt) {
+    if (!drawing) return;
+    drawing = false;
+    if (evt.pointerId !== undefined && board.hasPointerCapture(evt.pointerId)) {
+      board.releasePointerCapture(evt.pointerId);
+    }
+  }
+
+  board.addEventListener('pointerdown', startDraw);
+  board.addEventListener('pointermove', moveDraw);
+  board.addEventListener('pointerup', endDraw);
+  board.addEventListener('pointercancel', endDraw);
+  board.addEventListener('pointerleave', (evt) => {
+    if (drawing) endDraw(evt);
+  });
+
+  penSize.addEventListener('input', () => {
+    penSizeLabel.textContent = penSize.value;
+  });
+
+  eraserBtn.addEventListener('click', () => {
+    eraserOn = !eraserOn;
+    eraserBtn.classList.toggle('toggle-active', eraserOn);
+    eraserBtn.textContent = eraserOn ? '消しゴム中' : '消しゴム';
+  });
+
+  undoBtn.addEventListener('click', () => {
+    if (undoStack.length === 0) return;
+    const snapshot = undoStack.pop();
+    ctx.putImageData(snapshot, 0, 0);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    pushUndoSnapshot();
+    fillWhite();
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'whiteboard.png';
+    link.href = board.toDataURL('image/png');
+    link.click();
+  });
+
+  function loadMemos() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveMemos(memos) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    } catch (e) {
+      alert('メモの保存に失敗しました。ブラウザの保存容量が不足している可能性があります。');
+    }
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderMemos() {
+    const memos = loadMemos();
+    memoGrid.innerHTML = '';
+    emptyState.hidden = memos.length > 0;
+    memos.slice().reverse().forEach((memo) => {
+      const card = document.createElement('div');
+      card.className = 'memo-card';
+
+      const img = document.createElement('img');
+      img.src = memo.dataUrl;
+      img.alt = memo.title;
+      img.addEventListener('click', () => {
+        pushUndoSnapshot();
+        const image = new Image();
+        image.onload = () => {
+          fillWhite();
+          ctx.drawImage(image, 0, 0, board.width, board.height);
+        };
+        image.src = memo.dataUrl;
+        memoTitle.value = memo.title;
+      });
+
+      const info = document.createElement('div');
+      info.className = 'memo-info';
+      const title = document.createElement('div');
+      title.className = 'memo-title';
+      title.textContent = memo.title;
+      const date = document.createElement('div');
+      date.className = 'memo-date';
+      date.textContent = formatDate(memo.createdAt);
+      info.appendChild(title);
+      info.appendChild(date);
+
+      const actions = document.createElement('div');
+      actions.className = 'memo-actions';
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '削除';
+      deleteBtn.addEventListener('click', () => {
+        const updated = loadMemos().filter((m) => m.id !== memo.id);
+        saveMemos(updated);
+        renderMemos();
+      });
+      actions.appendChild(deleteBtn);
+
+      card.appendChild(img);
+      card.appendChild(info);
+      card.appendChild(actions);
+      memoGrid.appendChild(card);
+    });
+  }
+
+  saveBtn.addEventListener('click', () => {
+    const memos = loadMemos();
+    const title = memoTitle.value.trim() || '無題のメモ';
+    memos.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      title,
+      dataUrl: board.toDataURL('image/png'),
+      createdAt: Date.now(),
+    });
+    saveMemos(memos);
+    renderMemos();
+  });
+
+  renderMemos();
+</script>
+</body>
+</html>
