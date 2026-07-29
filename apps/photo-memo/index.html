@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写真メモアプリ - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  .step {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    background: var(--card-bg);
+    margin-bottom: 1.2rem;
+  }
+  .step h2 {
+    margin: 0 0 0.8rem;
+    font-size: 1.05rem;
+  }
+  .start-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  button {
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button.accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.accent:hover {
+    opacity: 0.9;
+    color: #fff;
+  }
+  button.toggle-active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  #camera-video {
+    width: 100%;
+    max-width: 520px;
+    border-radius: 8px;
+    background: #000;
+    display: block;
+  }
+  #confirm-img {
+    width: 100%;
+    max-width: 520px;
+    border-radius: 8px;
+    display: block;
+  }
+  .camera-error {
+    color: #d64545;
+    font-size: 0.9rem;
+    margin: 0.6rem 0 0;
+  }
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.9rem;
+  }
+  .edit-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    align-items: flex-end;
+    margin-bottom: 0.9rem;
+  }
+  .field label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .field input[type="color"] {
+    width: 3rem;
+    height: 2.2rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+  }
+  .field input[type="range"] {
+    width: 7rem;
+  }
+  .field input[type="text"] {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .edit-canvas-wrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    touch-action: none;
+    line-height: 0;
+  }
+  .edit-canvas-wrap canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  #draw-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: crosshair;
+  }
+  section.block {
+    margin-top: 2rem;
+  }
+  section.block h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+  .memo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  .memo-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--card-bg);
+  }
+  .memo-card img {
+    width: 100%;
+    display: block;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    cursor: pointer;
+    background: #000;
+  }
+  .memo-card .memo-info {
+    padding: 0.5rem 0.6rem;
+  }
+  .memo-card .memo-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .memo-card .memo-date {
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .memo-card .memo-actions {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0 0.6rem 0.6rem;
+  }
+  .memo-card .memo-actions button {
+    flex: 1;
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+  }
+  .empty-state {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  input[type="file"] {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>写真メモアプリ</h1>
+    <p>カメラで撮影した写真、または選択した写真の上に手書きでメモを書き込み、ブラウザに保存できます。</p>
+  </header>
+
+  <div id="step-start" class="step">
+    <h2>1. 写真を用意する</h2>
+    <div class="start-actions">
+      <button id="start-camera-btn" class="accent" type="button">カメラを起動</button>
+      <button id="pick-file-btn" type="button">写真ファイルを選択</button>
+      <input id="file-fallback" type="file" accept="image/*" capture="environment">
+    </div>
+    <p id="camera-error" class="camera-error" hidden></p>
+  </div>
+
+  <div id="step-camera" class="step" hidden>
+    <h2>2. 撮影する</h2>
+    <video id="camera-video" autoplay playsinline muted></video>
+    <div class="action-row">
+      <button id="shutter-btn" class="accent" type="button">撮影する</button>
+      <button id="cancel-camera-btn" type="button">やめる</button>
+    </div>
+  </div>
+
+  <div id="step-confirm" class="step" hidden>
+    <h2>3. この写真を使いますか？</h2>
+    <img id="confirm-img" alt="撮影した写真のプレビュー">
+    <div class="action-row">
+      <button id="use-photo-btn" class="accent" type="button">この写真を使う</button>
+      <button id="retake-btn" type="button">撮り直す</button>
+    </div>
+  </div>
+
+  <div id="step-edit" class="step" hidden>
+    <h2>4. 写真に手書きメモを書く</h2>
+    <div class="edit-toolbar">
+      <div class="field">
+        <label for="pen-color">ペンの色</label>
+        <input id="pen-color" type="color" value="#ff3b30">
+      </div>
+      <div class="field">
+        <label for="pen-size">太さ（<span id="pen-size-label">6</span>px）</label>
+        <input id="pen-size" type="range" min="1" max="40" value="6">
+      </div>
+      <div class="field">
+        <button id="eraser-btn" type="button">消しゴム</button>
+      </div>
+      <div class="field">
+        <button id="undo-btn" type="button">元に戻す</button>
+      </div>
+      <div class="field">
+        <button id="clear-drawing-btn" type="button">メモを消去</button>
+      </div>
+      <div class="field">
+        <button id="edit-retake-btn" type="button">撮り直す</button>
+      </div>
+    </div>
+    <div class="edit-canvas-wrap">
+      <canvas id="photo-canvas"></canvas>
+      <canvas id="draw-canvas"></canvas>
+    </div>
+    <div class="edit-toolbar" style="margin-top: 0.9rem;">
+      <div class="field" style="flex: 1 1 240px;">
+        <label for="memo-title">メモのタイトル</label>
+        <input id="memo-title" type="text" placeholder="無題の写真メモ" style="width: 100%;">
+      </div>
+      <div class="field">
+        <button id="save-memo-btn" class="accent" type="button">ローカルに保存</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="block">
+    <h2>保存した写真メモ</h2>
+    <div id="memo-grid" class="memo-grid"></div>
+    <p id="empty-state" class="empty-state" hidden>保存された写真メモはまだありません。</p>
+  </section>
+</div>
+
+<script>
+  const STORAGE_KEY = 'webtools-photo-memos';
+
+  const stepStart = document.getElementById('step-start');
+  const stepCamera = document.getElementById('step-camera');
+  const stepConfirm = document.getElementById('step-confirm');
+  const stepEdit = document.getElementById('step-edit');
+
+  const startCameraBtn = document.getElementById('start-camera-btn');
+  const pickFileBtn = document.getElementById('pick-file-btn');
+  const fileFallback = document.getElementById('file-fallback');
+  const cameraError = document.getElementById('camera-error');
+
+  const cameraVideo = document.getElementById('camera-video');
+  const shutterBtn = document.getElementById('shutter-btn');
+  const cancelCameraBtn = document.getElementById('cancel-camera-btn');
+
+  const confirmImg = document.getElementById('confirm-img');
+  const usePhotoBtn = document.getElementById('use-photo-btn');
+  const retakeBtn = document.getElementById('retake-btn');
+
+  const photoCanvas = document.getElementById('photo-canvas');
+  const drawCanvas = document.getElementById('draw-canvas');
+  const photoCtx = photoCanvas.getContext('2d');
+  const drawCtx = drawCanvas.getContext('2d');
+
+  const penColor = document.getElementById('pen-color');
+  const penSize = document.getElementById('pen-size');
+  const penSizeLabel = document.getElementById('pen-size-label');
+  const eraserBtn = document.getElementById('eraser-btn');
+  const undoBtn = document.getElementById('undo-btn');
+  const clearDrawingBtn = document.getElementById('clear-drawing-btn');
+  const editRetakeBtn = document.getElementById('edit-retake-btn');
+  const memoTitle = document.getElementById('memo-title');
+  const saveMemoBtn = document.getElementById('save-memo-btn');
+
+  const memoGrid = document.getElementById('memo-grid');
+  const emptyState = document.getElementById('empty-state');
+
+  let mediaStream = null;
+  let capturedDataUrl = null;
+  let source = null; // 'camera' | 'file'
+
+  function showStep(step) {
+    [stepStart, stepCamera, stepConfirm, stepEdit].forEach((el) => {
+      el.hidden = el !== step;
+    });
+  }
+
+  function stopStream() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop());
+      mediaStream = null;
+    }
+  }
+
+  async function startCamera() {
+    cameraError.hidden = true;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      cameraError.textContent = 'このブラウザではカメラを利用できません。「写真ファイルを選択」をお使いください。';
+      cameraError.hidden = false;
+      return;
+    }
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      cameraVideo.srcObject = mediaStream;
+      source = 'camera';
+      showStep(stepCamera);
+    } catch (err) {
+      cameraError.textContent = 'カメラを起動できませんでした（権限が拒否されたか、カメラが見つかりません）。「写真ファイルを選択」をお使いください。';
+      cameraError.hidden = false;
+    }
+  }
+
+  startCameraBtn.addEventListener('click', startCamera);
+
+  pickFileBtn.addEventListener('click', () => {
+    source = 'file';
+    fileFallback.value = '';
+    fileFallback.click();
+  });
+
+  fileFallback.addEventListener('change', () => {
+    const file = fileFallback.files && fileFallback.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      capturedDataUrl = reader.result;
+      confirmImg.src = capturedDataUrl;
+      showStep(stepConfirm);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  shutterBtn.addEventListener('click', () => {
+    const w = cameraVideo.videoWidth || 640;
+    const h = cameraVideo.videoHeight || 480;
+    const captureCanvas = document.createElement('canvas');
+    captureCanvas.width = w;
+    captureCanvas.height = h;
+    captureCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, w, h);
+    capturedDataUrl = captureCanvas.toDataURL('image/png');
+    confirmImg.src = capturedDataUrl;
+    stopStream();
+    showStep(stepConfirm);
+  });
+
+  cancelCameraBtn.addEventListener('click', () => {
+    stopStream();
+    showStep(stepStart);
+  });
+
+  retakeBtn.addEventListener('click', () => {
+    capturedDataUrl = null;
+    if (source === 'camera') {
+      startCamera();
+    } else {
+      showStep(stepStart);
+    }
+  });
+
+  editRetakeBtn.addEventListener('click', () => {
+    capturedDataUrl = null;
+    if (source === 'camera') {
+      startCamera();
+    } else {
+      showStep(stepStart);
+    }
+  });
+
+  const undoStack = [];
+  const MAX_UNDO = 25;
+  let eraserOn = false;
+  let drawing = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  usePhotoBtn.addEventListener('click', () => {
+    const image = new Image();
+    image.onload = () => {
+      photoCanvas.width = image.width;
+      photoCanvas.height = image.height;
+      drawCanvas.width = image.width;
+      drawCanvas.height = image.height;
+      photoCtx.drawImage(image, 0, 0);
+      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+      undoStack.length = 0;
+      memoTitle.value = '';
+      showStep(stepEdit);
+    };
+    image.src = capturedDataUrl;
+  });
+
+  function pushUndoSnapshot() {
+    undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  }
+
+  function getPos(evt) {
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width / rect.width;
+    const scaleY = drawCanvas.height / rect.height;
+    return {
+      x: (evt.clientX - rect.left) * scaleX,
+      y: (evt.clientY - rect.top) * scaleY,
+    };
+  }
+
+  function startDraw(evt) {
+    drawing = true;
+    pushUndoSnapshot();
+    const pos = getPos(evt);
+    lastX = pos.x;
+    lastY = pos.y;
+    drawCanvas.setPointerCapture(evt.pointerId);
+    drawDot(pos.x, pos.y);
+  }
+
+  function drawDot(x, y) {
+    drawCtx.globalCompositeOperation = eraserOn ? 'destination-out' : 'source-over';
+    drawCtx.beginPath();
+    drawCtx.fillStyle = penColor.value;
+    drawCtx.arc(x, y, Number(penSize.value) / 2, 0, Math.PI * 2);
+    drawCtx.fill();
+  }
+
+  function moveDraw(evt) {
+    if (!drawing) return;
+    const pos = getPos(evt);
+    drawCtx.globalCompositeOperation = eraserOn ? 'destination-out' : 'source-over';
+    drawCtx.strokeStyle = penColor.value;
+    drawCtx.lineWidth = Number(penSize.value);
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    drawCtx.beginPath();
+    drawCtx.moveTo(lastX, lastY);
+    drawCtx.lineTo(pos.x, pos.y);
+    drawCtx.stroke();
+    lastX = pos.x;
+    lastY = pos.y;
+  }
+
+  function endDraw(evt) {
+    if (!drawing) return;
+    drawing = false;
+    if (evt.pointerId !== undefined && drawCanvas.hasPointerCapture(evt.pointerId)) {
+      drawCanvas.releasePointerCapture(evt.pointerId);
+    }
+  }
+
+  drawCanvas.addEventListener('pointerdown', startDraw);
+  drawCanvas.addEventListener('pointermove', moveDraw);
+  drawCanvas.addEventListener('pointerup', endDraw);
+  drawCanvas.addEventListener('pointercancel', endDraw);
+  drawCanvas.addEventListener('pointerleave', (evt) => {
+    if (drawing) endDraw(evt);
+  });
+
+  penSize.addEventListener('input', () => {
+    penSizeLabel.textContent = penSize.value;
+  });
+
+  eraserBtn.addEventListener('click', () => {
+    eraserOn = !eraserOn;
+    eraserBtn.classList.toggle('toggle-active', eraserOn);
+    eraserBtn.textContent = eraserOn ? '消しゴム中' : '消しゴム';
+  });
+
+  undoBtn.addEventListener('click', () => {
+    if (undoStack.length === 0) return;
+    const snapshot = undoStack.pop();
+    drawCtx.putImageData(snapshot, 0, 0);
+  });
+
+  clearDrawingBtn.addEventListener('click', () => {
+    pushUndoSnapshot();
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  });
+
+  function loadMemos() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveMemos(memos) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+  }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderMemos() {
+    const memos = loadMemos();
+    memoGrid.innerHTML = '';
+    emptyState.hidden = memos.length > 0;
+    memos.slice().reverse().forEach((memo) => {
+      const card = document.createElement('div');
+      card.className = 'memo-card';
+
+      const img = document.createElement('img');
+      img.src = memo.dataUrl;
+      img.alt = memo.title;
+      img.addEventListener('click', () => {
+        window.open(memo.dataUrl, '_blank');
+      });
+
+      const info = document.createElement('div');
+      info.className = 'memo-info';
+      const title = document.createElement('div');
+      title.className = 'memo-title';
+      title.textContent = memo.title;
+      const date = document.createElement('div');
+      date.className = 'memo-date';
+      date.textContent = formatDate(memo.createdAt);
+      info.appendChild(title);
+      info.appendChild(date);
+
+      const actions = document.createElement('div');
+      actions.className = 'memo-actions';
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '削除';
+      deleteBtn.addEventListener('click', () => {
+        const updated = loadMemos().filter((m) => m.id !== memo.id);
+        saveMemos(updated);
+        renderMemos();
+      });
+      actions.appendChild(deleteBtn);
+
+      card.appendChild(img);
+      card.appendChild(info);
+      card.appendChild(actions);
+      memoGrid.appendChild(card);
+    });
+  }
+
+  saveMemoBtn.addEventListener('click', () => {
+    const merged = document.createElement('canvas');
+    merged.width = photoCanvas.width;
+    merged.height = photoCanvas.height;
+    const mergedCtx = merged.getContext('2d');
+    mergedCtx.drawImage(photoCanvas, 0, 0);
+    mergedCtx.drawImage(drawCanvas, 0, 0);
+
+    const memos = loadMemos();
+    const title = memoTitle.value.trim() || '無題の写真メモ';
+    memos.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      title,
+      dataUrl: merged.toDataURL('image/png'),
+      createdAt: Date.now(),
+    });
+    saveMemos(memos);
+    renderMemos();
+    stopStream();
+    capturedDataUrl = null;
+    showStep(stepStart);
+  });
+
+  renderMemos();
+</script>
+</body>
+</html>

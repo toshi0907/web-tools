@@ -13,5 +13,20 @@
     "name": "どうぶつしょうぎ",
     "path": "apps/animal-shogi/",
     "description": "3×4のかわいいミニ将棋。ライオン・ゾウ・キリン・ヒヨコでふたり対戦できます。"
+  },
+  {
+    "name": "手書きホワイトボード＆メモ",
+    "path": "apps/whiteboard-memo/",
+    "description": "マウスやタッチで自由に描けるホワイトボード。書いた内容はメモとしてブラウザに保存できます。"
+  },
+  {
+    "name": "高機能電卓",
+    "path": "apps/advanced-calculator/",
+    "description": "括弧や優先順位に対応した関数電卓。進数変換・計算履歴・角度変換・キーボード入力にも対応。"
+  },
+  {
+    "name": "写真メモアプリ",
+    "path": "apps/photo-memo/",
+    "description": "カメラで撮影（または選択）した写真の上に手書きメモを書き込み、ブラウザに保存できます。"
   }
 ]
