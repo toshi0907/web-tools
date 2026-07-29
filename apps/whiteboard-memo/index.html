@@ -316,7 +316,11 @@
   }
 
   function saveMemos(memos) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    } catch (e) {
+      alert('メモの保存に失敗しました。ブラウザの保存容量が不足している可能性があります。');
+    }
   }
 
   function formatDate(ts) {

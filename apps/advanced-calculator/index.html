@@ -438,7 +438,10 @@
         else if (op === '/') {
           if (rhs === 0) throw new Error('0で割ることはできません');
           value /= rhs;
-        } else value %= rhs;
+        } else {
+          if (rhs === 0) throw new Error('0で割ることはできません');
+          value %= rhs;
+        }
       }
       return value;
     }
@@ -576,8 +579,18 @@
     try {
       await navigator.clipboard.writeText(text);
     } catch (e) {
-      exprInput.select();
-      document.execCommand('copy');
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch (copyErr) {
+        // クリップボードにコピーできない環境では何もしない
+      }
+      document.body.removeChild(textarea);
     }
   });
 
@@ -602,7 +615,11 @@
   }
 
   function saveHistory(items) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      alert('履歴の保存に失敗しました。ブラウザの保存容量が不足している可能性があります。');
+    }
   }
 
   function addHistory(expr, result) {

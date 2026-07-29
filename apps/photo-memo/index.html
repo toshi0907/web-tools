@@ -406,14 +406,23 @@
   let lastX = 0;
   let lastY = 0;
 
+  const MAX_CANVAS_DIMENSION = 1600;
+
+  function computeScaledDimensions(width, height, maxDim) {
+    if (width <= maxDim && height <= maxDim) return { width, height };
+    const scale = maxDim / Math.max(width, height);
+    return { width: Math.round(width * scale), height: Math.round(height * scale) };
+  }
+
   usePhotoBtn.addEventListener('click', () => {
     const image = new Image();
     image.onload = () => {
-      photoCanvas.width = image.width;
-      photoCanvas.height = image.height;
-      drawCanvas.width = image.width;
-      drawCanvas.height = image.height;
-      photoCtx.drawImage(image, 0, 0);
+      const { width, height } = computeScaledDimensions(image.width, image.height, MAX_CANVAS_DIMENSION);
+      photoCanvas.width = width;
+      photoCanvas.height = height;
+      drawCanvas.width = width;
+      drawCanvas.height = height;
+      photoCtx.drawImage(image, 0, 0, width, height);
       drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
       undoStack.length = 0;
       memoTitle.value = '';
@@ -517,7 +526,11 @@
   }
 
   function saveMemos(memos) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(memos));
+    } catch (e) {
+      alert('写真メモの保存に失敗しました。ブラウザの保存容量が不足している可能性があります。');
+    }
   }
 
   function formatDate(ts) {
@@ -537,7 +550,7 @@
       img.src = memo.dataUrl;
       img.alt = memo.title;
       img.addEventListener('click', () => {
-        window.open(memo.dataUrl, '_blank');
+        window.open(memo.dataUrl, '_blank', 'noopener');
       });
 
       const info = document.createElement('div');
