@@ -299,6 +299,17 @@
         </div>
         <div id="base-error" class="base-error"></div>
       </section>
+
+      <section class="block">
+        <h2>角度変換</h2>
+        <div class="base-grid">
+          <label for="angle-deg">度</label>
+          <input id="angle-deg" type="text" inputmode="decimal" spellcheck="false" placeholder="例: 180">
+          <label for="angle-rad">ラジアン</label>
+          <input id="angle-rad" type="text" inputmode="decimal" spellcheck="false" placeholder="例: 3.14159265">
+        </div>
+        <div id="angle-error" class="base-error"></div>
+      </section>
     </div>
 
     <div class="calc-side">
@@ -714,6 +725,33 @@
 
   baseFields.forEach((f) => {
     f.el.addEventListener('input', () => syncBaseFields(f));
+  });
+
+  // ---- Angle converter ----
+  const angleDeg = document.getElementById('angle-deg');
+  const angleRad = document.getElementById('angle-rad');
+  const angleError = document.getElementById('angle-error');
+
+  function syncAngleFields(source) {
+    const target = source === angleDeg ? angleRad : angleDeg;
+    const raw = source.value.trim();
+    angleError.textContent = '';
+    if (raw === '' || raw === '-') {
+      target.value = '';
+      return;
+    }
+    if (!/^-?[0-9]*\.?[0-9]+$/.test(raw)) {
+      angleError.textContent = '数値として正しくない値です';
+      return;
+    }
+    const value = Number(raw);
+    target.value = source === angleDeg
+      ? formatNumber((value * Math.PI) / 180)
+      : formatNumber((value * 180) / Math.PI);
+  }
+
+  [angleDeg, angleRad].forEach((el) => {
+    el.addEventListener('input', () => syncAngleFields(el));
   });
 </script>
 </body>
