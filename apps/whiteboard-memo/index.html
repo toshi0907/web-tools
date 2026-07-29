@@ -65,17 +65,23 @@
     border-color: var(--accent);
     color: var(--accent);
   }
+  .page {
+    max-width: 1200px;
+  }
   .canvas-wrap {
     border: 1px solid var(--border);
     border-radius: 10px;
     background: #ffffff;
     touch-action: none;
     overflow: hidden;
+    width: 100%;
+    height: min(72vh, 760px);
+    min-height: 320px;
   }
   #board {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     cursor: crosshair;
   }
   section.block {
@@ -164,8 +170,8 @@
     </div>
   </div>
 
-  <div class="canvas-wrap">
-    <canvas id="board" width="900" height="560"></canvas>
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="board"></canvas>
   </div>
 
   <div class="toolbar" style="margin-top: 1rem;">
@@ -189,6 +195,7 @@
   const STORAGE_KEY = 'webtools-whiteboard-memos';
 
   const board = document.getElementById('board');
+  const canvasWrap = document.getElementById('canvas-wrap');
   const ctx = board.getContext('2d');
   const penColor = document.getElementById('pen-color');
   const penSize = document.getElementById('pen-size');
@@ -214,7 +221,29 @@
     ctx.fillRect(0, 0, board.width, board.height);
   }
 
-  fillWhite();
+  let resizeTimer = null;
+
+  function resizeBoard() {
+    const width = Math.max(1, Math.round(canvasWrap.clientWidth));
+    const height = Math.max(1, Math.round(canvasWrap.clientHeight));
+    if (board.width === width && board.height === height) return;
+    const prevDataUrl = board.width && board.height ? board.toDataURL('image/png') : null;
+    board.width = width;
+    board.height = height;
+    fillWhite();
+    undoStack.length = 0;
+    if (prevDataUrl) {
+      const prevImage = new Image();
+      prevImage.onload = () => ctx.drawImage(prevImage, 0, 0, board.width, board.height);
+      prevImage.src = prevDataUrl;
+    }
+  }
+
+  resizeBoard();
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeBoard, 250);
+  });
 
   function pushUndoSnapshot() {
     undoStack.push(ctx.getImageData(0, 0, board.width, board.height));
