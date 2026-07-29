@@ -2,6 +2,8 @@
 
 簡易的なWebアプリを複数配置し、GitHub Pagesでまとめて公開するためのリポジトリです。
 
+公開URL: https://toshi0907.github.io/web-tools/
+
 ## 構成
 
 ```
