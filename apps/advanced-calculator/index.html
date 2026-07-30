@@ -222,6 +222,7 @@
   <header class="page-header">
     <h1>高機能電卓</h1>
     <p>括弧・演算子の優先順位に対応した関数電卓です。進数変換、計算履歴、単位（角度）変換も備えています。</p>
+    <p>計算結果として扱える値の範囲は -9,007,199,254,740,991 〜 9,007,199,254,740,991（2<sup>53</sup>-1、JavaScriptが誤差なく扱える整数の上限）です。この範囲を超える、または無限大になる計算はオーバーフローエラーとして表示されます。</p>
   </header>
 
   <div class="calc-layout">
@@ -349,6 +350,8 @@ if ('serviceWorker' in navigator) {
 
   // ---- Expression parser / evaluator ----
   const CONSTANTS = { pi: Math.PI, e: Math.E, g: 9.80665 };
+  const MAX_VALUE = Number.MAX_SAFE_INTEGER;
+  const MIN_VALUE = -Number.MAX_SAFE_INTEGER;
 
   function tokenize(str) {
     const tokens = [];
@@ -388,6 +391,7 @@ if ('serviceWorker' in navigator) {
 
   function factorial(n) {
     if (n < 0 || !Number.isInteger(n)) throw new Error('階乗は0以上の整数のみ計算できます');
+    if (n > 170) throw new Error('オーバーフローしました（階乗の値が大きすぎます）');
     let result = 1;
     for (let i = 2; i <= n; i++) result *= i;
     return result;
@@ -521,6 +525,9 @@ if ('serviceWorker' in navigator) {
     const result = parseExpression();
     if (pos !== tokens.length) throw new Error('式の形式が正しくありません');
     if (typeof result !== 'number' || Number.isNaN(result)) throw new Error('計算できませんでした');
+    if (!Number.isFinite(result) || result > MAX_VALUE || result < MIN_VALUE) {
+      throw new Error('オーバーフローしました（結果が扱える範囲を超えています）');
+    }
     return result;
   }
 
@@ -533,6 +540,7 @@ if ('serviceWorker' in navigator) {
     const cursor = start + text.length;
     exprInput.focus();
     exprInput.setSelectionRange(cursor, cursor);
+    previewCalculate();
   }
 
   function formatNumber(n) {
@@ -541,6 +549,25 @@ if ('serviceWorker' in navigator) {
     return rounded.toString();
   }
 
+  // 式の内容だけを評価して表示を更新する（履歴には残さない）
+  function previewCalculate() {
+    const expr = exprInput.value.trim();
+    if (!expr) {
+      resultLine.textContent = '';
+      resultLine.classList.remove('error');
+      return;
+    }
+    try {
+      const value = evaluateExpression(expr);
+      resultLine.classList.remove('error');
+      resultLine.textContent = '= ' + formatNumber(value);
+    } catch (err) {
+      resultLine.classList.add('error');
+      resultLine.textContent = err.message || 'エラー';
+    }
+  }
+
+  // =キー/Enterで確定計算し、履歴に残す
   function calculate() {
     const expr = exprInput.value.trim();
     if (!expr) return;
@@ -559,6 +586,8 @@ if ('serviceWorker' in navigator) {
   document.querySelectorAll('[data-insert]').forEach((btn) => {
     btn.addEventListener('click', () => insertAtCursor(btn.getAttribute('data-insert')));
   });
+
+  exprInput.addEventListener('input', previewCalculate);
 
   document.getElementById('equals-btn').addEventListener('click', calculate);
   document.getElementById('ac-btn').addEventListener('click', () => {
@@ -579,6 +608,7 @@ if ('serviceWorker' in navigator) {
       exprInput.setSelectionRange(start, start);
     }
     exprInput.focus();
+    previewCalculate();
   });
 
   exprInput.addEventListener('keydown', (evt) => {
@@ -669,6 +699,7 @@ if ('serviceWorker' in navigator) {
       textWrap.addEventListener('click', () => {
         exprInput.value = item.expr;
         exprInput.focus();
+        previewCalculate();
       });
 
       const delBtn = document.createElement('button');
