@@ -47,21 +47,47 @@
     opacity: 0.9;
     color: #fff;
   }
-  button.toggle-active {
-    border-color: var(--accent);
-    color: var(--accent);
+  .tool-group {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.8rem;
+    border: none;
+    border-right: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .tool-btn:last-child {
+    border-right: none;
+  }
+  .tool-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .tool-btn:hover {
+    background: var(--bg);
+  }
+  .tool-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tool-btn.active:hover {
+    background: var(--accent);
   }
   #camera-video {
     width: 100%;
     max-width: 520px;
     border-radius: 8px;
     background: #000;
-    display: block;
-  }
-  #confirm-img {
-    width: 100%;
-    max-width: 520px;
-    border-radius: 8px;
     display: block;
   }
   .camera-error {
@@ -214,17 +240,8 @@
     </div>
   </div>
 
-  <div id="step-confirm" class="step" hidden>
-    <h2>3. この写真を使いますか？</h2>
-    <img id="confirm-img" alt="撮影した写真のプレビュー">
-    <div class="action-row">
-      <button id="use-photo-btn" class="accent" type="button">この写真を使う</button>
-      <button id="retake-btn" type="button">撮り直す</button>
-    </div>
-  </div>
-
   <div id="step-edit" class="step" hidden>
-    <h2>4. 写真に手書きメモを書く</h2>
+    <h2>3. 写真に手書きメモを書く</h2>
     <div class="edit-toolbar">
       <div class="field">
         <label for="pen-color">ペンの色</label>
@@ -235,7 +252,17 @@
         <input id="pen-size" type="range" min="1" max="40" value="6">
       </div>
       <div class="field">
-        <button id="eraser-btn" type="button">消しゴム</button>
+        <label>ツール</label>
+        <div class="tool-group" role="group" aria-label="描画ツール">
+          <button id="pen-tool-btn" type="button" class="tool-btn active" aria-pressed="true" title="ペン">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            ペン
+          </button>
+          <button id="eraser-tool-btn" type="button" class="tool-btn" aria-pressed="false" title="消しゴム">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+            消しゴム
+          </button>
+        </div>
       </div>
       <div class="field">
         <button id="undo-btn" type="button">元に戻す</button>
@@ -279,7 +306,6 @@ if ('serviceWorker' in navigator) {
 
   const stepStart = document.getElementById('step-start');
   const stepCamera = document.getElementById('step-camera');
-  const stepConfirm = document.getElementById('step-confirm');
   const stepEdit = document.getElementById('step-edit');
 
   const startCameraBtn = document.getElementById('start-camera-btn');
@@ -291,10 +317,6 @@ if ('serviceWorker' in navigator) {
   const shutterBtn = document.getElementById('shutter-btn');
   const cancelCameraBtn = document.getElementById('cancel-camera-btn');
 
-  const confirmImg = document.getElementById('confirm-img');
-  const usePhotoBtn = document.getElementById('use-photo-btn');
-  const retakeBtn = document.getElementById('retake-btn');
-
   const photoCanvas = document.getElementById('photo-canvas');
   const drawCanvas = document.getElementById('draw-canvas');
   const photoCtx = photoCanvas.getContext('2d');
@@ -303,7 +325,8 @@ if ('serviceWorker' in navigator) {
   const penColor = document.getElementById('pen-color');
   const penSize = document.getElementById('pen-size');
   const penSizeLabel = document.getElementById('pen-size-label');
-  const eraserBtn = document.getElementById('eraser-btn');
+  const penToolBtn = document.getElementById('pen-tool-btn');
+  const eraserToolBtn = document.getElementById('eraser-tool-btn');
   const undoBtn = document.getElementById('undo-btn');
   const clearDrawingBtn = document.getElementById('clear-drawing-btn');
   const editRetakeBtn = document.getElementById('edit-retake-btn');
@@ -314,11 +337,10 @@ if ('serviceWorker' in navigator) {
   const emptyState = document.getElementById('empty-state');
 
   let mediaStream = null;
-  let capturedDataUrl = null;
   let source = null; // 'camera' | 'file'
 
   function showStep(step) {
-    [stepStart, stepCamera, stepConfirm, stepEdit].forEach((el) => {
+    [stepStart, stepCamera, stepEdit].forEach((el) => {
       el.hidden = el !== step;
     });
   }
@@ -365,9 +387,7 @@ if ('serviceWorker' in navigator) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      capturedDataUrl = reader.result;
-      confirmImg.src = capturedDataUrl;
-      showStep(stepConfirm);
+      openEditor(reader.result);
     };
     reader.readAsDataURL(file);
   });
@@ -379,10 +399,9 @@ if ('serviceWorker' in navigator) {
     captureCanvas.width = w;
     captureCanvas.height = h;
     captureCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, w, h);
-    capturedDataUrl = captureCanvas.toDataURL('image/png');
-    confirmImg.src = capturedDataUrl;
+    const dataUrl = captureCanvas.toDataURL('image/png');
     stopStream();
-    showStep(stepConfirm);
+    openEditor(dataUrl);
   });
 
   cancelCameraBtn.addEventListener('click', () => {
@@ -390,17 +409,7 @@ if ('serviceWorker' in navigator) {
     showStep(stepStart);
   });
 
-  retakeBtn.addEventListener('click', () => {
-    capturedDataUrl = null;
-    if (source === 'camera') {
-      startCamera();
-    } else {
-      showStep(stepStart);
-    }
-  });
-
   editRetakeBtn.addEventListener('click', () => {
-    capturedDataUrl = null;
     if (source === 'camera') {
       startCamera();
     } else {
@@ -423,7 +432,7 @@ if ('serviceWorker' in navigator) {
     return { width: Math.round(width * scale), height: Math.round(height * scale) };
   }
 
-  usePhotoBtn.addEventListener('click', () => {
+  function openEditor(dataUrl) {
     const image = new Image();
     image.onload = () => {
       const { width, height } = computeScaledDimensions(image.width, image.height, MAX_CANVAS_DIMENSION);
@@ -435,10 +444,11 @@ if ('serviceWorker' in navigator) {
       drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
       undoStack.length = 0;
       memoTitle.value = '';
+      setTool('pen');
       showStep(stepEdit);
     };
-    image.src = capturedDataUrl;
-  });
+    image.src = dataUrl;
+  }
 
   function pushUndoSnapshot() {
     undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
@@ -509,11 +519,16 @@ if ('serviceWorker' in navigator) {
     penSizeLabel.textContent = penSize.value;
   });
 
-  eraserBtn.addEventListener('click', () => {
-    eraserOn = !eraserOn;
-    eraserBtn.classList.toggle('toggle-active', eraserOn);
-    eraserBtn.textContent = eraserOn ? '消しゴム中' : '消しゴム';
-  });
+  function setTool(tool) {
+    eraserOn = tool === 'eraser';
+    penToolBtn.classList.toggle('active', !eraserOn);
+    penToolBtn.setAttribute('aria-pressed', String(!eraserOn));
+    eraserToolBtn.classList.toggle('active', eraserOn);
+    eraserToolBtn.setAttribute('aria-pressed', String(eraserOn));
+  }
+
+  penToolBtn.addEventListener('click', () => setTool('pen'));
+  eraserToolBtn.addEventListener('click', () => setTool('eraser'));
 
   undoBtn.addEventListener('click', () => {
     if (undoStack.length === 0) return;
@@ -610,7 +625,6 @@ if ('serviceWorker' in navigator) {
     saveMemos(memos);
     renderMemos();
     stopStream();
-    capturedDataUrl = null;
     showStep(stepStart);
   });
 
