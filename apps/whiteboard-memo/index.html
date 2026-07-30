@@ -64,9 +64,43 @@
     opacity: 0.9;
     color: #fff;
   }
-  button.toggle-active {
-    border-color: var(--accent);
-    color: var(--accent);
+  .tool-group {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    height: 2.2rem;
+  }
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.8rem;
+    border: none;
+    border-right: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 0.85rem;
+    height: 100%;
+  }
+  .tool-btn:last-child {
+    border-right: none;
+  }
+  .tool-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .tool-btn:hover {
+    background: var(--bg);
+  }
+  .tool-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tool-btn.active:hover {
+    background: var(--accent);
   }
   .page {
     max-width: 1200px;
@@ -160,7 +194,17 @@
       <input id="pen-size" type="range" min="1" max="40" value="4">
     </div>
     <div class="field">
-      <button id="eraser-btn" type="button">消しゴム</button>
+      <label>ツール</label>
+      <div class="tool-group" role="group" aria-label="描画ツール">
+        <button id="pen-tool-btn" type="button" class="tool-btn active" aria-pressed="true" title="ペン">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          ペン
+        </button>
+        <button id="eraser-tool-btn" type="button" class="tool-btn" aria-pressed="false" title="消しゴム">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+          消しゴム
+        </button>
+      </div>
     </div>
     <div class="field">
       <button id="undo-btn" type="button">元に戻す</button>
@@ -208,7 +252,8 @@ if ('serviceWorker' in navigator) {
   const penColor = document.getElementById('pen-color');
   const penSize = document.getElementById('pen-size');
   const penSizeLabel = document.getElementById('pen-size-label');
-  const eraserBtn = document.getElementById('eraser-btn');
+  const penToolBtn = document.getElementById('pen-tool-btn');
+  const eraserToolBtn = document.getElementById('eraser-tool-btn');
   const undoBtn = document.getElementById('undo-btn');
   const clearBtn = document.getElementById('clear-btn');
   const downloadBtn = document.getElementById('download-btn');
@@ -320,11 +365,16 @@ if ('serviceWorker' in navigator) {
     penSizeLabel.textContent = penSize.value;
   });
 
-  eraserBtn.addEventListener('click', () => {
-    eraserOn = !eraserOn;
-    eraserBtn.classList.toggle('toggle-active', eraserOn);
-    eraserBtn.textContent = eraserOn ? '消しゴム中' : '消しゴム';
-  });
+  function setTool(tool) {
+    eraserOn = tool === 'eraser';
+    penToolBtn.classList.toggle('active', !eraserOn);
+    penToolBtn.setAttribute('aria-pressed', String(!eraserOn));
+    eraserToolBtn.classList.toggle('active', eraserOn);
+    eraserToolBtn.setAttribute('aria-pressed', String(eraserOn));
+  }
+
+  penToolBtn.addEventListener('click', () => setTool('pen'));
+  eraserToolBtn.addEventListener('click', () => setTool('eraser'));
 
   undoBtn.addEventListener('click', () => {
     if (undoStack.length === 0) return;
