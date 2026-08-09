@@ -103,6 +103,25 @@
     font-size: 0.85rem;
     white-space: nowrap;
   }
+  .file-remove-btn {
+    flex-shrink: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    line-height: 1;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .file-remove-btn:hover {
+    color: var(--fg);
+    border-color: var(--accent);
+  }
+  .file-list-actions {
+    margin: -0.8rem 0 1rem;
+  }
   .actions {
     margin-top: 1.5rem;
     display: flex;
@@ -158,6 +177,9 @@
     <input id="file-input-other" type="file" multiple hidden>
   </div>
   <p class="file-info" id="file-info">ファイルが選択されていません。</p>
+  <div class="file-list-actions" id="file-list-actions" hidden>
+    <button type="button" id="clear-all-btn">選択をすべてクリア</button>
+  </div>
   <ul class="file-list" id="file-list"></ul>
 
   <div class="size-fields">
@@ -194,6 +216,8 @@ if ('serviceWorker' in navigator) {
   const pickPhotosBtn = document.getElementById('pick-photos-btn');
   const pickFilesBtn = document.getElementById('pick-files-btn');
   const fileInfo = document.getElementById('file-info');
+  const fileListActionsEl = document.getElementById('file-list-actions');
+  const clearAllBtn = document.getElementById('clear-all-btn');
   const fileListEl = document.getElementById('file-list');
   const widthInput = document.getElementById('width-input');
   const heightInput = document.getElementById('height-input');
@@ -274,8 +298,17 @@ if ('serviceWorker' in navigator) {
       dims.textContent = `${entry.img.naturalWidth}×${entry.img.naturalHeight}`;
       li.appendChild(dims);
 
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'file-remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', `${entry.outputName} を選択から削除`);
+      removeBtn.addEventListener('click', () => removeEntry(entry));
+      li.appendChild(removeBtn);
+
       fileListEl.appendChild(li);
     }
+    fileListActionsEl.hidden = entries.length === 0;
   }
 
   pickPhotosBtn.addEventListener('click', () => {
@@ -288,42 +321,41 @@ if ('serviceWorker' in navigator) {
     fileInputOther.click();
   });
 
-  async function handleFilesSelected(fileList) {
-    for (const entry of entries) {
-      URL.revokeObjectURL(entry.url);
-    }
-    entries = [];
-    fileListEl.innerHTML = '';
-    resizeBtn.disabled = true;
-    clearPendingZip();
-    setStatus('', '');
+  async function syncAfterEntriesChange() {
+    await assignOutputNames(entries);
+    renderFileList();
+    resizeBtn.disabled = entries.length === 0;
+  }
 
+  async function handleFilesSelected(fileList) {
     const files = Array.from(fileList || []);
     if (files.length === 0) {
-      fileInfo.textContent = 'ファイルが選択されていません。';
       return;
     }
 
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
     if (imageFiles.length === 0) {
-      fileInfo.textContent = '画像ファイルが選択されていません。';
       setStatus('画像ファイルを選択してください。', 'error');
       return;
     }
 
+    clearPendingZip();
+    setStatus('', '');
     fileInfo.textContent = '画像を読み込んでいます…';
 
     const failedNames = [];
+    let addedCount = 0;
     for (const file of imageFiles) {
       try {
         const { img, url } = await loadImage(file);
         entries.push({ file, img, url });
+        addedCount++;
       } catch (err) {
         failedNames.push(file.name);
       }
     }
 
-    await assignOutputNames(entries);
+    await syncAfterEntriesChange();
 
     const skipped = files.length - imageFiles.length;
     const notes = [];
@@ -333,13 +365,40 @@ if ('serviceWorker' in navigator) {
     if (failedNames.length > 0) {
       notes.push(`${failedNames.length} 個の画像の読み込みに失敗しました（${failedNames.join(', ')}）`);
     }
-    fileInfo.textContent = `${entries.length} 個の画像を読み込みました${notes.length > 0 ? `（${notes.join('。')}）` : ''}。一覧にはZIP内でのファイル名を表示しています。`;
+    fileInfo.textContent = entries.length > 0
+      ? `現在 ${entries.length} 個の画像が選択されています（今回 ${addedCount} 個追加${notes.length > 0 ? `。${notes.join('。')}` : ''}）。一覧にはZIP内でのファイル名を表示しています。`
+      : '画像を読み込めませんでした。';
     if (failedNames.length > 0) {
       setStatus(`一部の画像を読み込めませんでした: ${failedNames.join(', ')}`, 'error');
     }
-    renderFileList();
-    resizeBtn.disabled = entries.length === 0;
   }
+
+  async function removeEntry(entry) {
+    const idx = entries.indexOf(entry);
+    if (idx === -1) {
+      return;
+    }
+    URL.revokeObjectURL(entry.url);
+    entries.splice(idx, 1);
+    clearPendingZip();
+    setStatus('', '');
+    await syncAfterEntriesChange();
+    fileInfo.textContent = entries.length > 0
+      ? `現在 ${entries.length} 個の画像が選択されています。一覧にはZIP内でのファイル名を表示しています。`
+      : 'ファイルが選択されていません。';
+  }
+
+  clearAllBtn.addEventListener('click', () => {
+    for (const entry of entries) {
+      URL.revokeObjectURL(entry.url);
+    }
+    entries = [];
+    clearPendingZip();
+    setStatus('', '');
+    fileInfo.textContent = 'ファイルが選択されていません。';
+    renderFileList();
+    resizeBtn.disabled = true;
+  });
 
   async function assignOutputNames(targetEntries) {
     const usedNames = new Set();
