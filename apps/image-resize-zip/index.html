@@ -193,7 +193,14 @@ if ('serviceWorker' in navigator) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => resolve({ img, url });
+      img.onload = () => {
+        if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+          URL.revokeObjectURL(url);
+          reject(new Error(`${file.name} の画像サイズを取得できませんでした。`));
+          return;
+        }
+        resolve({ img, url });
+      };
       img.onerror = () => {
         URL.revokeObjectURL(url);
         reject(new Error(`${file.name} を画像として読み込めませんでした。`));
@@ -250,17 +257,28 @@ if ('serviceWorker' in navigator) {
 
     fileInfo.textContent = '画像を読み込んでいます…';
 
-    try {
-      for (const file of imageFiles) {
+    const failedNames = [];
+    for (const file of imageFiles) {
+      try {
         const { img, url } = await loadImage(file);
         entries.push({ file, img, url });
+      } catch (err) {
+        failedNames.push(file.name);
       }
-    } catch (err) {
-      setStatus(err.message || '画像の読み込みに失敗しました。', 'error');
     }
 
     const skipped = files.length - imageFiles.length;
-    fileInfo.textContent = `${entries.length} 個の画像を読み込みました${skipped > 0 ? `（画像以外の ${skipped} 個のファイルはスキップしました）` : ''}。`;
+    const notes = [];
+    if (skipped > 0) {
+      notes.push(`画像以外の ${skipped} 個のファイルはスキップしました`);
+    }
+    if (failedNames.length > 0) {
+      notes.push(`${failedNames.length} 個の画像の読み込みに失敗しました（${failedNames.join(', ')}）`);
+    }
+    fileInfo.textContent = `${entries.length} 個の画像を読み込みました${notes.length > 0 ? `（${notes.join('。')}）` : ''}。`;
+    if (failedNames.length > 0) {
+      setStatus(`一部の画像を読み込めませんでした: ${failedNames.join(', ')}`, 'error');
+    }
     renderFileList();
     resizeBtn.disabled = entries.length === 0;
   });
@@ -325,11 +343,18 @@ if ('serviceWorker' in navigator) {
         const { file, img } = entries[i];
         setStatus(`リサイズしています…（${i + 1}/${entries.length}）`, 'info');
 
+        if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+          throw new Error(`${file.name} の画像サイズが不正なためリサイズできませんでした。`);
+        }
+
         const size = computeSize(img.naturalWidth, img.naturalHeight, targetW, targetH, keepAspect);
         const canvas = document.createElement('canvas');
         canvas.width = size.w;
         canvas.height = size.h;
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('Canvas の描画コンテキストを取得できませんでした。');
+        }
         ctx.drawImage(img, 0, 0, size.w, size.h);
 
         const { mime, ext } = outputMimeAndExt(file);
