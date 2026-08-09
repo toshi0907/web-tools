@@ -355,7 +355,9 @@ if ('serviceWorker' in navigator) {
       }
     }
 
-    await syncAfterEntriesChange();
+    if (addedCount > 0) {
+      await syncAfterEntriesChange();
+    }
 
     const skipped = files.length - imageFiles.length;
     const notes = [];
@@ -407,10 +409,12 @@ if ('serviceWorker' in navigator) {
 
     for (const entry of targetEntries) {
       const ext = extForMime(outputMime(entry.file));
-      const exifDate = await getExifDateTimeOriginal(entry.file);
+      if (entry.exifDate === undefined) {
+        entry.exifDate = await getExifDateTimeOriginal(entry.file);
+      }
       let baseNameForOutput;
-      if (exifDate) {
-        baseNameForOutput = formatTimestamp(exifDate);
+      if (entry.exifDate) {
+        baseNameForOutput = formatTimestamp(entry.exifDate);
       } else {
         fallbackCounter++;
         baseNameForOutput = `${fallbackTimestamp}-${fallbackCounter}`;
