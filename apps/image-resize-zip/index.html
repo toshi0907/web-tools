@@ -334,9 +334,118 @@ if ('serviceWorker' in navigator) {
     return '.png';
   }
 
-  function baseName(fileName) {
-    const idx = fileName.lastIndexOf('.');
-    return idx > 0 ? fileName.slice(0, idx) : fileName;
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function formatTimestamp(date) {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}_${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
+  }
+
+  function findExifTiffOffset(view) {
+    if (view.byteLength < 4 || view.getUint16(0, false) !== 0xffd8) {
+      return null;
+    }
+    let offset = 2;
+    while (offset + 4 <= view.byteLength) {
+      const marker = view.getUint16(offset, false);
+      if ((marker & 0xff00) !== 0xff00) {
+        break;
+      }
+      if (marker === 0xffd8 || marker === 0xffd9 || marker === 0xff01 || (marker >= 0xffd0 && marker <= 0xffd7)) {
+        offset += 2;
+        continue;
+      }
+      const segmentLength = view.getUint16(offset + 2, false);
+      if (marker === 0xffe1) {
+        const exifHeaderOffset = offset + 4;
+        if (
+          exifHeaderOffset + 6 <= view.byteLength &&
+          view.getUint32(exifHeaderOffset, false) === 0x45786966 &&
+          view.getUint16(exifHeaderOffset + 4, false) === 0x0000
+        ) {
+          return exifHeaderOffset + 6;
+        }
+      }
+      if (marker === 0xffda) {
+        break;
+      }
+      offset += 2 + segmentLength;
+    }
+    return null;
+  }
+
+  function readIfdEntries(view, ifdOffset, little) {
+    const count = view.getUint16(ifdOffset, little);
+    const entries = [];
+    for (let i = 0; i < count; i++) {
+      const entryOffset = ifdOffset + 2 + i * 12;
+      entries.push({
+        tag: view.getUint16(entryOffset, little),
+        type: view.getUint16(entryOffset + 2, little),
+        count: view.getUint32(entryOffset + 4, little),
+        valueFieldOffset: entryOffset + 8,
+      });
+    }
+    return entries;
+  }
+
+  const EXIF_TYPE_SIZES = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+
+  function readEntryAscii(view, entry, tiffStart, little) {
+    const size = (EXIF_TYPE_SIZES[entry.type] || 1) * entry.count;
+    const dataOffset = size <= 4 ? entry.valueFieldOffset : tiffStart + view.getUint32(entry.valueFieldOffset, little);
+    const bytes = new Uint8Array(view.buffer, view.byteOffset + dataOffset, entry.count);
+    return String.fromCharCode(...bytes).replace(/\0+$/, '');
+  }
+
+  function extractExifDateTimeOriginal(buffer) {
+    try {
+      const view = new DataView(buffer);
+      const tiffStart = findExifTiffOffset(view);
+      if (tiffStart === null) {
+        return null;
+      }
+
+      const byteOrderMark = view.getUint16(tiffStart, false);
+      const little = byteOrderMark === 0x4949;
+      if (!little && byteOrderMark !== 0x4d4d) {
+        return null;
+      }
+
+      const firstIfdOffset = view.getUint32(tiffStart + 4, little);
+      const ifd0Entries = readIfdEntries(view, tiffStart + firstIfdOffset, little);
+      const exifPointerEntry = ifd0Entries.find((e) => e.tag === 0x8769);
+      if (!exifPointerEntry) {
+        return null;
+      }
+
+      const exifIfdOffset = tiffStart + view.getUint32(exifPointerEntry.valueFieldOffset, little);
+      const exifEntries = readIfdEntries(view, exifIfdOffset, little);
+      const dateEntry = exifEntries.find((e) => e.tag === 0x9003 && e.type === 2);
+      if (!dateEntry) {
+        return null;
+      }
+
+      const str = readEntryAscii(view, dateEntry, tiffStart, little);
+      const m = str.match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+      if (!m) {
+        return null;
+      }
+      const [, y, mo, d, hh, mi, ss] = m;
+      return new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mi), Number(ss));
+    } catch {
+      return null;
+    }
+  }
+
+  async function getExifDateTimeOriginal(file) {
+    try {
+      const buffer = await file.arrayBuffer();
+      return extractExifDateTimeOriginal(buffer);
+    } catch {
+      return null;
+    }
   }
 
   function canvasToBlob(canvas, mime) {
@@ -370,6 +479,8 @@ if ('serviceWorker' in navigator) {
     try {
       const zip = new JSZip();
       const usedNames = new Set();
+      const fallbackTimestamp = formatTimestamp(new Date());
+      let fallbackCounter = 0;
 
       for (let i = 0; i < entries.length; i++) {
         const { file, img } = entries[i];
@@ -391,12 +502,21 @@ if ('serviceWorker' in navigator) {
 
         const mime = outputMime(file);
         const blob = await canvasToBlob(canvas, mime);
-
         const ext = extForMime(mime);
-        let name = `${baseName(file.name)}${ext}`;
+
+        const exifDate = await getExifDateTimeOriginal(file);
+        let baseNameForOutput;
+        if (exifDate) {
+          baseNameForOutput = formatTimestamp(exifDate);
+        } else {
+          fallbackCounter++;
+          baseNameForOutput = `${fallbackTimestamp}-${fallbackCounter}`;
+        }
+
+        let name = `${baseNameForOutput}${ext}`;
         let counter = 2;
         while (usedNames.has(name)) {
-          name = `${baseName(file.name)}_${counter}${ext}`;
+          name = `${baseNameForOutput}_${counter}${ext}`;
           counter++;
         }
         usedNames.add(name);
