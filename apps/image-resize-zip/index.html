@@ -99,6 +99,9 @@
   }
   .actions {
     margin-top: 1.5rem;
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
   }
   button.primary {
     padding: 0.65rem 1.3rem;
@@ -162,7 +165,8 @@
   </div>
 
   <div class="actions">
-    <button class="primary" id="resize-btn" disabled>リサイズしてZIPダウンロード</button>
+    <button class="primary" id="resize-btn" disabled>リサイズしてZIPを作成</button>
+    <button class="primary" id="download-btn" hidden>ZIPをダウンロード</button>
   </div>
   <p class="status" id="status" role="status" aria-live="polite"></p>
 </div>
@@ -180,13 +184,34 @@ if ('serviceWorker' in navigator) {
   const heightInput = document.getElementById('height-input');
   const keepAspectInput = document.getElementById('keep-aspect');
   const resizeBtn = document.getElementById('resize-btn');
+  const downloadBtn = document.getElementById('download-btn');
   const statusEl = document.getElementById('status');
 
   let entries = [];
+  let pendingZip = null;
 
   function setStatus(message, type) {
     statusEl.textContent = message;
     statusEl.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    const kb = bytes / 1024;
+    if (kb < 1024) {
+      return `${kb.toFixed(1)} KB`;
+    }
+    return `${(kb / 1024).toFixed(2)} MB`;
+  }
+
+  function clearPendingZip() {
+    if (pendingZip) {
+      URL.revokeObjectURL(pendingZip.url);
+      pendingZip = null;
+    }
+    downloadBtn.hidden = true;
   }
 
   function loadImage(file) {
@@ -240,6 +265,7 @@ if ('serviceWorker' in navigator) {
     entries = [];
     fileListEl.innerHTML = '';
     resizeBtn.disabled = true;
+    clearPendingZip();
     setStatus('', '');
 
     const files = Array.from(fileInput.files || []);
@@ -294,13 +320,12 @@ if ('serviceWorker' in navigator) {
     };
   }
 
-  function outputMimeAndExt(file) {
+  function outputMime(file) {
     const type = file.type;
     if (type === 'image/jpeg' || type === 'image/png' || type === 'image/webp') {
-      const ext = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
-      return { mime: type, ext };
+      return type;
     }
-    return { mime: 'image/png', ext: 'png' };
+    return 'image/png';
   }
 
   function baseName(fileName) {
@@ -333,6 +358,7 @@ if ('serviceWorker' in navigator) {
     }
 
     resizeBtn.disabled = true;
+    clearPendingZip();
     const keepAspect = keepAspectInput.checked;
 
     try {
@@ -357,13 +383,14 @@ if ('serviceWorker' in navigator) {
         }
         ctx.drawImage(img, 0, 0, size.w, size.h);
 
-        const { mime, ext } = outputMimeAndExt(file);
+        const mime = outputMime(file);
         const blob = await canvasToBlob(canvas, mime);
 
-        let name = `${baseName(file.name)}.${ext}`;
+        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
+        let name = file.name;
         let counter = 2;
         while (usedNames.has(name)) {
-          name = `${baseName(file.name)}_${counter}.${ext}`;
+          name = `${baseName(file.name)}_${counter}${ext}`;
           counter++;
         }
         usedNames.add(name);
@@ -373,19 +400,25 @@ if ('serviceWorker' in navigator) {
 
       setStatus('ZIPを生成しています…', 'info');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.download = 'resized_images.zip';
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
+      pendingZip = { blob: zipBlob, url: URL.createObjectURL(zipBlob) };
+      downloadBtn.hidden = false;
 
-      setStatus(`完了しました（${entries.length} 個の画像をリサイズしてZIPにまとめました）。`, 'success');
+      setStatus(`完了しました（${entries.length} 個の画像をリサイズしました。ZIPサイズ: ${formatBytes(zipBlob.size)}）。「ZIPをダウンロード」ボタンを押してください。`, 'success');
     } catch (err) {
       setStatus(err.message || 'リサイズ中にエラーが発生しました。', 'error');
     } finally {
       resizeBtn.disabled = false;
     }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!pendingZip) {
+      return;
+    }
+    const link = document.createElement('a');
+    link.download = 'resized_images.zip';
+    link.href = pendingZip.url;
+    link.click();
   });
 </script>
 </body>
