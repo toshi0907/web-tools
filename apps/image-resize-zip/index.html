@@ -433,15 +433,20 @@ if ('serviceWorker' in navigator) {
         return null;
       }
       const [, y, mo, d, hh, mi, ss] = m;
+      if (Number(y) === 0 || Number(mo) === 0 || Number(d) === 0) {
+        return null;
+      }
       return new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mi), Number(ss));
     } catch {
       return null;
     }
   }
 
+  const EXIF_HEAD_READ_BYTES = 128 * 1024;
+
   async function getExifDateTimeOriginal(file) {
     try {
-      const buffer = await file.arrayBuffer();
+      const buffer = await file.slice(0, EXIF_HEAD_READ_BYTES).arrayBuffer();
       return extractExifDateTimeOriginal(buffer);
     } catch {
       return null;
