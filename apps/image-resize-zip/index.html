@@ -328,6 +328,12 @@ if ('serviceWorker' in navigator) {
     return 'image/png';
   }
 
+  function extForMime(mime) {
+    if (mime === 'image/jpeg') return '.jpg';
+    if (mime === 'image/webp') return '.webp';
+    return '.png';
+  }
+
   function baseName(fileName) {
     const idx = fileName.lastIndexOf('.');
     return idx > 0 ? fileName.slice(0, idx) : fileName;
@@ -386,8 +392,8 @@ if ('serviceWorker' in navigator) {
         const mime = outputMime(file);
         const blob = await canvasToBlob(canvas, mime);
 
-        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
-        let name = file.name;
+        const ext = extForMime(mime);
+        let name = `${baseName(file.name)}${ext}`;
         let counter = 2;
         while (usedNames.has(name)) {
           name = `${baseName(file.name)}_${counter}${ext}`;
