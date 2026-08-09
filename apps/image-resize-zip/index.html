@@ -178,6 +178,7 @@
   <div class="actions">
     <button class="primary" id="resize-btn" disabled>リサイズしてZIPを作成</button>
     <button class="primary" id="download-btn" hidden>ZIPをダウンロード</button>
+    <button class="primary" id="share-btn" hidden>共有（メールで送るなど）</button>
   </div>
   <p class="status" id="status" role="status" aria-live="polite"></p>
 </div>
@@ -199,7 +200,10 @@ if ('serviceWorker' in navigator) {
   const keepAspectInput = document.getElementById('keep-aspect');
   const resizeBtn = document.getElementById('resize-btn');
   const downloadBtn = document.getElementById('download-btn');
+  const shareBtn = document.getElementById('share-btn');
   const statusEl = document.getElementById('status');
+
+  const shareSupported = typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
 
   let entries = [];
   let pendingZip = null;
@@ -226,6 +230,7 @@ if ('serviceWorker' in navigator) {
       pendingZip = null;
     }
     downloadBtn.hidden = true;
+    shareBtn.hidden = true;
   }
 
   function loadImage(file) {
@@ -568,6 +573,9 @@ if ('serviceWorker' in navigator) {
         fileName: `resized_images_${formatZipTimestamp(new Date())}.zip`,
       };
       downloadBtn.hidden = false;
+      if (shareSupported) {
+        shareBtn.hidden = false;
+      }
 
       setStatus(`完了しました（${entries.length} 個の画像をリサイズしました。ZIPサイズ: ${formatBytes(zipBlob.size)}）。「ZIPをダウンロード」ボタンを押してください。`, 'success');
     } catch (err) {
@@ -585,6 +593,24 @@ if ('serviceWorker' in navigator) {
     link.download = pendingZip.fileName;
     link.href = pendingZip.url;
     link.click();
+  });
+
+  shareBtn.addEventListener('click', async () => {
+    if (!pendingZip) {
+      return;
+    }
+    const file = new File([pendingZip.blob], pendingZip.fileName, { type: 'application/zip' });
+    if (!navigator.canShare({ files: [file] })) {
+      setStatus('この端末・ブラウザはZIPファイルの共有に対応していません。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。', 'error');
+      return;
+    }
+    try {
+      await navigator.share({ files: [file], title: pendingZip.fileName });
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setStatus('共有に失敗しました。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。', 'error');
+      }
+    }
   });
 </script>
 </body>
