@@ -265,7 +265,8 @@ if ('serviceWorker' in navigator) {
 
       const name = document.createElement('span');
       name.className = 'file-name';
-      name.textContent = entry.file.name;
+      name.textContent = entry.outputName;
+      name.title = `元のファイル名: ${entry.file.name}`;
       li.appendChild(name);
 
       const dims = document.createElement('span');
@@ -322,6 +323,8 @@ if ('serviceWorker' in navigator) {
       }
     }
 
+    await assignOutputNames(entries);
+
     const skipped = files.length - imageFiles.length;
     const notes = [];
     if (skipped > 0) {
@@ -330,12 +333,39 @@ if ('serviceWorker' in navigator) {
     if (failedNames.length > 0) {
       notes.push(`${failedNames.length} 個の画像の読み込みに失敗しました（${failedNames.join(', ')}）`);
     }
-    fileInfo.textContent = `${entries.length} 個の画像を読み込みました${notes.length > 0 ? `（${notes.join('。')}）` : ''}。`;
+    fileInfo.textContent = `${entries.length} 個の画像を読み込みました${notes.length > 0 ? `（${notes.join('。')}）` : ''}。一覧にはZIP内でのファイル名を表示しています。`;
     if (failedNames.length > 0) {
       setStatus(`一部の画像を読み込めませんでした: ${failedNames.join(', ')}`, 'error');
     }
     renderFileList();
     resizeBtn.disabled = entries.length === 0;
+  }
+
+  async function assignOutputNames(targetEntries) {
+    const usedNames = new Set();
+    const fallbackTimestamp = formatTimestamp(new Date());
+    let fallbackCounter = 0;
+
+    for (const entry of targetEntries) {
+      const ext = extForMime(outputMime(entry.file));
+      const exifDate = await getExifDateTimeOriginal(entry.file);
+      let baseNameForOutput;
+      if (exifDate) {
+        baseNameForOutput = formatTimestamp(exifDate);
+      } else {
+        fallbackCounter++;
+        baseNameForOutput = `${fallbackTimestamp}-${fallbackCounter}`;
+      }
+
+      let name = `${baseNameForOutput}${ext}`;
+      let counter = 2;
+      while (usedNames.has(name)) {
+        name = `${baseNameForOutput}_${counter}${ext}`;
+        counter++;
+      }
+      usedNames.add(name);
+      entry.outputName = name;
+    }
   }
 
   fileInput.addEventListener('change', () => handleFilesSelected(fileInput.files));
@@ -519,12 +549,9 @@ if ('serviceWorker' in navigator) {
 
     try {
       const zip = new JSZip();
-      const usedNames = new Set();
-      const fallbackTimestamp = formatTimestamp(new Date());
-      let fallbackCounter = 0;
 
       for (let i = 0; i < entries.length; i++) {
-        const { file, img } = entries[i];
+        const { file, img, outputName } = entries[i];
         setStatus(`リサイズしています…（${i + 1}/${entries.length}）`, 'info');
 
         if (img.naturalWidth === 0 || img.naturalHeight === 0) {
@@ -543,26 +570,8 @@ if ('serviceWorker' in navigator) {
 
         const mime = outputMime(file);
         const blob = await canvasToBlob(canvas, mime);
-        const ext = extForMime(mime);
 
-        const exifDate = await getExifDateTimeOriginal(file);
-        let baseNameForOutput;
-        if (exifDate) {
-          baseNameForOutput = formatTimestamp(exifDate);
-        } else {
-          fallbackCounter++;
-          baseNameForOutput = `${fallbackTimestamp}-${fallbackCounter}`;
-        }
-
-        let name = `${baseNameForOutput}${ext}`;
-        let counter = 2;
-        while (usedNames.has(name)) {
-          name = `${baseNameForOutput}_${counter}${ext}`;
-          counter++;
-        }
-        usedNames.add(name);
-
-        zip.file(name, blob);
+        zip.file(outputName, blob);
       }
 
       setStatus('ZIPを生成しています…', 'info');
