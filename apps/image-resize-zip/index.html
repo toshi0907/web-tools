@@ -342,6 +342,10 @@ if ('serviceWorker' in navigator) {
     return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}_${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
   }
 
+  function formatZipTimestamp(date) {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
+  }
+
   function findExifTiffOffset(view) {
     if (view.byteLength < 4 || view.getUint16(0, false) !== 0xffd8) {
       return null;
@@ -531,7 +535,11 @@ if ('serviceWorker' in navigator) {
 
       setStatus('ZIPを生成しています…', 'info');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
-      pendingZip = { blob: zipBlob, url: URL.createObjectURL(zipBlob) };
+      pendingZip = {
+        blob: zipBlob,
+        url: URL.createObjectURL(zipBlob),
+        fileName: `resized_images_${formatZipTimestamp(new Date())}.zip`,
+      };
       downloadBtn.hidden = false;
 
       setStatus(`完了しました（${entries.length} 個の画像をリサイズしました。ZIPサイズ: ${formatBytes(zipBlob.size)}）。「ZIPをダウンロード」ボタンを押してください。`, 'success');
@@ -547,7 +555,7 @@ if ('serviceWorker' in navigator) {
       return;
     }
     const link = document.createElement('a');
-    link.download = 'resized_images.zip';
+    link.download = pendingZip.fileName;
     link.href = pendingZip.url;
     link.click();
   });
