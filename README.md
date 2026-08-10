@@ -14,7 +14,6 @@
 │   └── style.css        # 共通スタイル
 ├── apps/
 │   ├── _template/               # 新しいアプリを作る際のひな形
-│   ├── example/                  # サンプルアプリ
 │   ├── favicon-generator/         # favicon作成ツール
 │   ├── animal-shogi/               # どうぶつしょうぎ
 │   ├── whiteboard-memo/             # 手書きホワイトボード＆メモ
@@ -26,10 +25,6 @@
 ```
 
 ## アプリ一覧
-
-### サンプルアプリ (`apps/example/`)
-
-新しいアプリを追加する際のひな形です。カウンターの動作を確認できます。
 
 ### favicon作成ツール (`apps/favicon-generator/`)
 
