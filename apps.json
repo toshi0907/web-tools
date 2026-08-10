@@ -1,10 +1,5 @@
 [
   {
-    "name": "サンプルアプリ",
-    "path": "apps/example/",
-    "description": "新しいアプリを追加する際のひな形です。"
-  },
-  {
     "name": "favicon作成ツール",
     "path": "apps/favicon-generator/",
     "description": "文字を入力してシンプルなfaviconを作成し、PNGとしてダウンロードできます。"
