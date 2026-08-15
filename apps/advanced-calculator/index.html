@@ -371,6 +371,7 @@ if ('serviceWorker' in navigator) {
     'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
     'sqrt', 'log', 'ln', 'log2', 'exp', 'abs', 'pow', 'fact',
   ]);
+  const DANGEROUS_VARIABLE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
   function tokenize(str) {
     const tokens = [];
@@ -559,7 +560,7 @@ if ('serviceWorker' in navigator) {
   }
 
   function validateVariableName(name) {
-    if (RESERVED_NAMES.has(name.toLowerCase())) {
+    if (RESERVED_NAMES.has(name.toLowerCase()) || DANGEROUS_VARIABLE_KEYS.has(name)) {
       throw new Error(`"${name}" は予約された名前のため変数名に使用できません`);
     }
   }
@@ -742,9 +743,10 @@ if ('serviceWorker' in navigator) {
       li.className = 'history-item';
       const textWrap = document.createElement('div');
       textWrap.className = 'history-text';
+      const isAssignment = parseAssignment(item.expr) !== null;
       const exprSpan = document.createElement('span');
       exprSpan.className = 'history-expr';
-      exprSpan.textContent = item.expr + ' = ';
+      exprSpan.textContent = isAssignment ? item.expr + ' → ' : item.expr + ' = ';
       const resultSpan = document.createElement('span');
       resultSpan.className = 'history-result';
       resultSpan.textContent = item.result;
@@ -780,12 +782,20 @@ if ('serviceWorker' in navigator) {
 
   // ---- Variables ----
   function loadVariables() {
+    const safe = {};
     try {
       const obj = JSON.parse(localStorage.getItem(VARS_STORAGE_KEY));
-      return obj && typeof obj === 'object' ? obj : {};
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return safe;
+      Object.keys(obj).forEach((name) => {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return;
+        if (RESERVED_NAMES.has(name.toLowerCase()) || DANGEROUS_VARIABLE_KEYS.has(name)) return;
+        const value = obj[name];
+        if (typeof value === 'number' && Number.isFinite(value)) safe[name] = value;
+      });
     } catch (e) {
-      return {};
+      return safe;
     }
+    return safe;
   }
 
   function saveVariables() {
