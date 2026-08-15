@@ -210,6 +210,43 @@
     font-size: 0.8rem;
     padding: 0.3rem 0.6rem;
   }
+  .var-add-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .var-add-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--fg);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.85rem;
+  }
+  .var-add-row button {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+  }
+  .history-item .history-expr-name {
+    cursor: pointer;
+  }
+  .var-value-input {
+    width: 5.5rem;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--accent);
+    font-weight: 600;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.85rem;
+    padding: 0.15rem 0.35rem;
+    text-align: right;
+  }
   .empty-state {
     color: var(--muted);
     font-size: 0.85rem;
@@ -320,11 +357,16 @@
     <div class="calc-side">
       <section class="block" style="margin-top: 0;">
         <h2>変数</h2>
+        <div class="var-add-row">
+          <input id="new-var-name" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="変数名 (例: y)">
+          <button id="add-var-btn" type="button">変数を追加</button>
+        </div>
+        <div id="var-add-error" class="base-error"></div>
         <div class="history-tools">
           <button id="clear-vars-btn" type="button">変数を全て削除</button>
         </div>
         <ul id="vars-list" class="history-list"></ul>
-        <p id="vars-empty" class="empty-state" hidden><code>x=5</code> のように入力して計算すると、ここに保存されます。クリックで式に挿入できます。</p>
+        <p id="vars-empty" class="empty-state" hidden><code>x=5</code> のように入力して計算するか、変数名を入力して追加すると、ここに保存されます。名前クリックで式に挿入、値は直接編集できます。</p>
       </section>
 
       <section class="block">
@@ -816,15 +858,39 @@ if ('serviceWorker' in navigator) {
       const textWrap = document.createElement('div');
       textWrap.className = 'history-text';
       const nameSpan = document.createElement('span');
-      nameSpan.className = 'history-expr';
+      nameSpan.className = 'history-expr history-expr-name';
       nameSpan.textContent = name + ' = ';
-      const valueSpan = document.createElement('span');
-      valueSpan.className = 'history-result';
-      valueSpan.textContent = formatNumber(variables[name]);
+      nameSpan.title = '式に挿入';
+      nameSpan.addEventListener('click', () => insertAtCursor(name));
+
+      const valueInput = document.createElement('input');
+      valueInput.type = 'text';
+      valueInput.inputMode = 'decimal';
+      valueInput.className = 'var-value-input';
+      valueInput.value = formatNumber(variables[name]);
+      valueInput.title = '値を編集';
+      valueInput.addEventListener('click', (evt) => evt.stopPropagation());
+      valueInput.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          valueInput.blur();
+        }
+      });
+      valueInput.addEventListener('change', () => {
+        const raw = valueInput.value.trim();
+        const num = Number(raw);
+        if (raw === '' || !Number.isFinite(num)) {
+          valueInput.value = formatNumber(variables[name]);
+          return;
+        }
+        variables[name] = num;
+        saveVariables();
+        valueInput.value = formatNumber(num);
+        previewCalculate();
+      });
+
       textWrap.appendChild(nameSpan);
-      textWrap.appendChild(valueSpan);
-      textWrap.title = '式に挿入';
-      textWrap.addEventListener('click', () => insertAtCursor(name));
+      textWrap.appendChild(valueInput);
 
       const delBtn = document.createElement('button');
       delBtn.textContent = '×';
@@ -834,6 +900,7 @@ if ('serviceWorker' in navigator) {
         delete variables[name];
         saveVariables();
         renderVariables();
+        previewCalculate();
       });
 
       li.appendChild(textWrap);
@@ -846,6 +913,45 @@ if ('serviceWorker' in navigator) {
     variables = {};
     saveVariables();
     renderVariables();
+    previewCalculate();
+  });
+
+  function addVariable() {
+    const nameInput = document.getElementById('new-var-name');
+    const errorEl = document.getElementById('var-add-error');
+    const name = nameInput.value.trim();
+    errorEl.textContent = '';
+    if (!name) {
+      errorEl.textContent = '変数名を入力してください';
+      return;
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      errorEl.textContent = '変数名は英字またはアンダースコアで始まり、英数字とアンダースコアのみ使用できます';
+      return;
+    }
+    try {
+      validateVariableName(name);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(variables, name)) {
+      errorEl.textContent = `変数 "${name}" は既に存在します`;
+      return;
+    }
+    variables[name] = 0;
+    saveVariables();
+    renderVariables();
+    nameInput.value = '';
+    previewCalculate();
+  }
+
+  document.getElementById('add-var-btn').addEventListener('click', addVariable);
+  document.getElementById('new-var-name').addEventListener('keydown', (evt) => {
+    if (evt.key === 'Enter') {
+      evt.preventDefault();
+      addVariable();
+    }
   });
 
   renderVariables();
