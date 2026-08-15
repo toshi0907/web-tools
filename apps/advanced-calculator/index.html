@@ -178,10 +178,29 @@
   .history-item:hover {
     border-color: var(--accent);
   }
+  #vars-list .history-item {
+    cursor: default;
+  }
+  .history-item .history-text-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
   .history-item .history-text {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .history-item .history-vars {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    color: var(--muted);
   }
   .history-item .history-expr {
     color: var(--muted);
@@ -358,10 +377,10 @@
       <section class="block" style="margin-top: 0;">
         <h2>変数</h2>
         <div class="var-add-row">
-          <input id="new-var-name" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="変数名 (例: y)">
+          <input id="new-var-name" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="変数名 (例: y)" aria-label="変数名" aria-describedby="var-add-error">
           <button id="add-var-btn" type="button">変数を追加</button>
         </div>
-        <div id="var-add-error" class="base-error"></div>
+        <div id="var-add-error" class="base-error" aria-live="polite"></div>
         <div class="history-tools">
           <button id="clear-vars-btn" type="button">変数を全て削除</button>
         </div>
@@ -594,6 +613,23 @@ if ('serviceWorker' in navigator) {
     return result;
   }
 
+  // 式中で参照されている変数名とその時点の値を取得する（履歴に記録するため）
+  function snapshotVariablesInExpr(exprStr) {
+    const snap = {};
+    let tokens;
+    try {
+      tokens = tokenize(exprStr);
+    } catch (e) {
+      return snap;
+    }
+    tokens.forEach((t) => {
+      if (t.type === 'IDENT' && Object.prototype.hasOwnProperty.call(variables, t.value)) {
+        snap[t.value] = variables[t.value];
+      }
+    });
+    return snap;
+  }
+
   // ---- Variable assignment ----
   function parseAssignment(str) {
     const m = str.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/);
@@ -659,6 +695,7 @@ if ('serviceWorker' in navigator) {
       const assignment = parseAssignment(expr);
       if (assignment) {
         validateVariableName(assignment.name);
+        const usedVars = snapshotVariablesInExpr(assignment.expr);
         const value = evaluateExpression(assignment.expr);
         variables[assignment.name] = value;
         saveVariables();
@@ -666,14 +703,15 @@ if ('serviceWorker' in navigator) {
         lastAns = value;
         resultLine.classList.remove('error');
         resultLine.textContent = assignment.name + ' = ' + formatNumber(value);
-        addHistory(expr, formatNumber(value));
+        addHistory(expr, formatNumber(value), usedVars);
         return;
       }
+      const usedVars = snapshotVariablesInExpr(expr);
       const value = evaluateExpression(expr);
       lastAns = value;
       resultLine.classList.remove('error');
       resultLine.textContent = '= ' + formatNumber(value);
-      addHistory(expr, formatNumber(value));
+      addHistory(expr, formatNumber(value), usedVars);
     } catch (err) {
       resultLine.classList.add('error');
       resultLine.textContent = err.message || 'エラー';
@@ -768,9 +806,14 @@ if ('serviceWorker' in navigator) {
     }
   }
 
-  function addHistory(expr, result) {
+  function addHistory(expr, result, usedVars) {
     const items = loadHistory();
-    items.push({ expr, result, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) });
+    items.push({
+      expr,
+      result,
+      vars: usedVars || {},
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    });
     while (items.length > MAX_HISTORY) items.shift();
     saveHistory(items);
     renderHistory();
@@ -784,7 +827,10 @@ if ('serviceWorker' in navigator) {
       const li = document.createElement('li');
       li.className = 'history-item';
       const textWrap = document.createElement('div');
-      textWrap.className = 'history-text';
+      textWrap.className = 'history-text-wrap';
+
+      const mainRow = document.createElement('div');
+      mainRow.className = 'history-text';
       const isAssignment = parseAssignment(item.expr) !== null;
       const exprSpan = document.createElement('span');
       exprSpan.className = 'history-expr';
@@ -792,8 +838,20 @@ if ('serviceWorker' in navigator) {
       const resultSpan = document.createElement('span');
       resultSpan.className = 'history-result';
       resultSpan.textContent = item.result;
-      textWrap.appendChild(exprSpan);
-      textWrap.appendChild(resultSpan);
+      mainRow.appendChild(exprSpan);
+      mainRow.appendChild(resultSpan);
+      textWrap.appendChild(mainRow);
+
+      if (item.vars && Object.keys(item.vars).length > 0) {
+        const varsLine = document.createElement('div');
+        varsLine.className = 'history-vars';
+        varsLine.textContent = Object.keys(item.vars)
+          .map((name) => `${name}=${formatNumber(item.vars[name])}`)
+          .join(', ');
+        varsLine.title = '計算時点の変数の値';
+        textWrap.appendChild(varsLine);
+      }
+
       textWrap.addEventListener('click', () => {
         exprInput.value = item.expr;
         exprInput.focus();
@@ -866,9 +924,11 @@ if ('serviceWorker' in navigator) {
       const valueInput = document.createElement('input');
       valueInput.type = 'text';
       valueInput.inputMode = 'decimal';
+      valueInput.spellcheck = false;
       valueInput.className = 'var-value-input';
       valueInput.value = formatNumber(variables[name]);
       valueInput.title = '値を編集';
+      valueInput.setAttribute('aria-label', name + ' の値');
       valueInput.addEventListener('click', (evt) => evt.stopPropagation());
       valueInput.addEventListener('keydown', (evt) => {
         if (evt.key === 'Enter') {
@@ -947,6 +1007,9 @@ if ('serviceWorker' in navigator) {
   }
 
   document.getElementById('add-var-btn').addEventListener('click', addVariable);
+  document.getElementById('new-var-name').addEventListener('input', () => {
+    document.getElementById('var-add-error').textContent = '';
+  });
   document.getElementById('new-var-name').addEventListener('keydown', (evt) => {
     if (evt.key === 'Enter') {
       evt.preventDefault();
