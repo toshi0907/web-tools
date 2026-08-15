@@ -223,6 +223,7 @@
     <h1>高機能電卓</h1>
     <p>括弧・演算子の優先順位に対応した関数電卓です。進数変換、計算履歴、単位（角度）変換も備えています。</p>
     <p>計算結果として扱える値の範囲は -9,007,199,254,740,991 〜 9,007,199,254,740,991（2<sup>53</sup>-1、JavaScriptが誤差なく扱える整数の上限）です。この範囲を超える、または無限大になる計算はオーバーフローエラーとして表示されます。</p>
+    <p><code>x=5</code> のように入力して計算すると、その値を変数として保存できます。保存した変数は以降の式の中でそのまま使用できます。</p>
   </header>
 
   <div class="calc-layout">
@@ -318,6 +319,15 @@
 
     <div class="calc-side">
       <section class="block" style="margin-top: 0;">
+        <h2>変数</h2>
+        <div class="history-tools">
+          <button id="clear-vars-btn" type="button">変数を全て削除</button>
+        </div>
+        <ul id="vars-list" class="history-list"></ul>
+        <p id="vars-empty" class="empty-state" hidden><code>x=5</code> のように入力して計算すると、ここに保存されます。クリックで式に挿入できます。</p>
+      </section>
+
+      <section class="block">
         <h2>計算履歴</h2>
         <div class="history-tools">
           <button id="clear-history-btn" type="button">履歴を消去</button>
@@ -337,6 +347,7 @@ if ('serviceWorker' in navigator) {
 <script>
   const STORAGE_KEY = 'webtools-calculator-history';
   const MAX_HISTORY = 50;
+  const VARS_STORAGE_KEY = 'webtools-calculator-variables';
 
   const exprInput = document.getElementById('expr-input');
   const resultLine = document.getElementById('result-line');
@@ -344,14 +355,22 @@ if ('serviceWorker' in navigator) {
   const modeRadBtn = document.getElementById('mode-rad');
   const historyList = document.getElementById('history-list');
   const historyEmpty = document.getElementById('history-empty');
+  const varsList = document.getElementById('vars-list');
+  const varsEmpty = document.getElementById('vars-empty');
 
   let degMode = true;
   let lastAns = 0;
+  let variables = loadVariables();
 
   // ---- Expression parser / evaluator ----
   const CONSTANTS = { pi: Math.PI, e: Math.E, g: 9.80665 };
   const MAX_VALUE = Number.MAX_SAFE_INTEGER;
   const MIN_VALUE = -Number.MAX_SAFE_INTEGER;
+  const RESERVED_NAMES = new Set([
+    'ans', 'pi', 'e', 'g',
+    'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
+    'sqrt', 'log', 'ln', 'log2', 'exp', 'abs', 'pow', 'fact',
+  ]);
 
   function tokenize(str) {
     const tokens = [];
@@ -439,6 +458,7 @@ if ('serviceWorker' in navigator) {
       const lower = name.toLowerCase();
       if (lower === 'ans') return lastAns;
       if (lower in CONSTANTS) return CONSTANTS[lower];
+      if (Object.prototype.hasOwnProperty.call(variables, name)) return variables[name];
       throw new Error(`不明な識別子です: ${name}`);
     }
 
@@ -531,6 +551,19 @@ if ('serviceWorker' in navigator) {
     return result;
   }
 
+  // ---- Variable assignment ----
+  function parseAssignment(str) {
+    const m = str.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/);
+    if (!m) return null;
+    return { name: m[1], expr: m[2] };
+  }
+
+  function validateVariableName(name) {
+    if (RESERVED_NAMES.has(name.toLowerCase())) {
+      throw new Error(`"${name}" は予約された名前のため変数名に使用できません`);
+    }
+  }
+
   // ---- Display / input helpers ----
   function insertAtCursor(text) {
     const start = exprInput.selectionStart ?? exprInput.value.length;
@@ -558,6 +591,14 @@ if ('serviceWorker' in navigator) {
       return;
     }
     try {
+      const assignment = parseAssignment(expr);
+      if (assignment) {
+        validateVariableName(assignment.name);
+        const value = evaluateExpression(assignment.expr);
+        resultLine.classList.remove('error');
+        resultLine.textContent = assignment.name + ' = ' + formatNumber(value);
+        return;
+      }
       const value = evaluateExpression(expr);
       resultLine.classList.remove('error');
       resultLine.textContent = '= ' + formatNumber(value);
@@ -572,6 +613,19 @@ if ('serviceWorker' in navigator) {
     const expr = exprInput.value.trim();
     if (!expr) return;
     try {
+      const assignment = parseAssignment(expr);
+      if (assignment) {
+        validateVariableName(assignment.name);
+        const value = evaluateExpression(assignment.expr);
+        variables[assignment.name] = value;
+        saveVariables();
+        renderVariables();
+        lastAns = value;
+        resultLine.classList.remove('error');
+        resultLine.textContent = assignment.name + ' = ' + formatNumber(value);
+        addHistory(expr, formatNumber(value));
+        return;
+      }
       const value = evaluateExpression(expr);
       lastAns = value;
       resultLine.classList.remove('error');
@@ -723,6 +777,68 @@ if ('serviceWorker' in navigator) {
   });
 
   renderHistory();
+
+  // ---- Variables ----
+  function loadVariables() {
+    try {
+      const obj = JSON.parse(localStorage.getItem(VARS_STORAGE_KEY));
+      return obj && typeof obj === 'object' ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveVariables() {
+    try {
+      localStorage.setItem(VARS_STORAGE_KEY, JSON.stringify(variables));
+    } catch (e) {
+      alert('変数の保存に失敗しました。ブラウザの保存容量が不足している可能性があります。');
+    }
+  }
+
+  function renderVariables() {
+    const names = Object.keys(variables);
+    varsList.innerHTML = '';
+    varsEmpty.hidden = names.length > 0;
+    names.forEach((name) => {
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      const textWrap = document.createElement('div');
+      textWrap.className = 'history-text';
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'history-expr';
+      nameSpan.textContent = name + ' = ';
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'history-result';
+      valueSpan.textContent = formatNumber(variables[name]);
+      textWrap.appendChild(nameSpan);
+      textWrap.appendChild(valueSpan);
+      textWrap.title = '式に挿入';
+      textWrap.addEventListener('click', () => insertAtCursor(name));
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '×';
+      delBtn.title = '削除';
+      delBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        delete variables[name];
+        saveVariables();
+        renderVariables();
+      });
+
+      li.appendChild(textWrap);
+      li.appendChild(delBtn);
+      varsList.appendChild(li);
+    });
+  }
+
+  document.getElementById('clear-vars-btn').addEventListener('click', () => {
+    variables = {};
+    saveVariables();
+    renderVariables();
+  });
+
+  renderVariables();
 
   // ---- Base converter ----
   const baseBin = document.getElementById('base-bin');
