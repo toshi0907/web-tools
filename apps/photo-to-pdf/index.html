@@ -507,7 +507,7 @@ if ('serviceWorker' in navigator) {
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `photos_${formatTimestamp(new Date())}.pdf`;
+      link.download = `${formatTimestamp(new Date())}.pdf`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
