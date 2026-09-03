@@ -450,7 +450,7 @@ if ('serviceWorker' in navigator) {
     return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
   }
 
-  async function buildPdf() {
+  async function buildPdf(snapshot) {
     const pdfDoc = await PDFLib.PDFDocument.create();
     const [pageW, pageH] = A4;
     const margin = 28;
@@ -460,13 +460,13 @@ if ('serviceWorker' in navigator) {
     const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
     const cellH = (pageH - margin * 2 - gap * (rows - 1)) / rows;
 
-    for (let pageStart = 0; pageStart < entries.length; pageStart += perPage) {
+    for (let pageStart = 0; pageStart < snapshot.length; pageStart += perPage) {
       const page = pdfDoc.addPage(A4);
-      const group = entries.slice(pageStart, pageStart + perPage);
+      const group = snapshot.slice(pageStart, pageStart + perPage);
 
       for (let i = 0; i < group.length; i++) {
         const entry = group[i];
-        setStatus(`PDFを作成しています…（${pageStart + i + 1}/${entries.length}）`, 'info');
+        setStatus(`PDFを作成しています…（${pageStart + i + 1}/${snapshot.length}）`, 'info');
 
         const col = i % cols;
         const row = Math.floor(i / cols);
@@ -500,8 +500,10 @@ if ('serviceWorker' in navigator) {
     createBtn.disabled = true;
     setStatus('PDFを作成しています…', 'info');
 
+    const snapshot = entries.map((entry) => ({ img: entry.img, rotation: entry.rotation }));
+
     try {
-      const bytes = await buildPdf();
+      const bytes = await buildPdf(snapshot);
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -510,7 +512,7 @@ if ('serviceWorker' in navigator) {
       link.click();
       URL.revokeObjectURL(url);
 
-      setStatus(`完了しました（${entries.length} 枚の写真をPDFにまとめました）。`, 'success');
+      setStatus(`完了しました（${snapshot.length} 枚の写真をPDFにまとめました）。`, 'success');
     } catch (err) {
       setStatus(err.message || 'PDFの作成中にエラーが発生しました。', 'error');
     } finally {
