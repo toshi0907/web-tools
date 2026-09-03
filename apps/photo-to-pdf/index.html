@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>写真PDF化ツール - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+<style>
+  .field {
+    margin-bottom: 1rem;
+  }
+  .field .field-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  input[type="file"] {
+    width: 100%;
+    color: var(--fg);
+  }
+  .file-info {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0.5rem 0 1.5rem;
+  }
+  .file-list-actions {
+    margin: -0.8rem 0 1rem;
+  }
+  .file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .file-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+  }
+  .file-list .order-index {
+    flex-shrink: 0;
+    width: 1.6rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: right;
+  }
+  .file-list .thumb-wrap {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--border);
+  }
+  .file-list img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    transition: transform 0.15s ease;
+  }
+  .file-list .file-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-list .item-btn {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    line-height: 1;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .file-list .item-btn:hover:not(:disabled) {
+    color: var(--fg);
+    border-color: var(--accent);
+  }
+  .file-list .item-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .layout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+  .layout-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+  }
+  .layout-option.selected {
+    border-color: var(--accent);
+  }
+  .layout-option .layout-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .layout-option .layout-desc {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  .actions {
+    margin-top: 1.5rem;
+  }
+  button.primary {
+    padding: 0.65rem 1.3rem;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button.primary:hover {
+    opacity: 0.9;
+  }
+  button.primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+  .status.error {
+    color: #c0392b;
+  }
+  .status.info {
+    color: var(--muted);
+  }
+  .status.success {
+    color: #2e7d32;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>写真PDF化ツール</h1>
+    <p>複数の写真をアップロードし、レイアウトを選んで1つのPDFにまとめてダウンロードできます。写真ごとに回転や並び替えも可能です。</p>
+  </header>
+
+  <div class="field">
+    <span class="field-label">写真（複数選択可）</span>
+    <input id="file-input" type="file" accept="image/*" multiple>
+  </div>
+  <p class="file-info" id="file-info">ファイルが選択されていません。</p>
+  <div class="file-list-actions" id="file-list-actions" hidden>
+    <button type="button" id="clear-all-btn">選択をすべてクリア</button>
+  </div>
+  <ul class="file-list" id="file-list"></ul>
+
+  <div class="layout-list" id="layout-list">
+    <div class="layout-option selected" data-layout="single">
+      <label class="layout-label"><input type="radio" name="layout" value="single" checked> 1ページに1枚</label>
+      <p class="layout-desc">1枚の写真を1ページいっぱいに配置します。</p>
+    </div>
+    <div class="layout-option" data-layout="twoup">
+      <label class="layout-label"><input type="radio" name="layout" value="twoup"> 1ページに2枚</label>
+      <p class="layout-desc">1ページを上下2段に分け、2枚ずつ配置します。</p>
+    </div>
+    <div class="layout-option" data-layout="fourup">
+      <label class="layout-label"><input type="radio" name="layout" value="fourup"> 1ページに4枚</label>
+      <p class="layout-desc">1ページを2×2に分け、4枚ずつ配置します。</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="create-btn" disabled>PDFを作成してダウンロード</button>
+  </div>
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+<script>
+  const fileInput = document.getElementById('file-input');
+  const fileInfo = document.getElementById('file-info');
+  const fileListActionsEl = document.getElementById('file-list-actions');
+  const clearAllBtn = document.getElementById('clear-all-btn');
+  const fileListEl = document.getElementById('file-list');
+  const layoutListEl = document.getElementById('layout-list');
+  const createBtn = document.getElementById('create-btn');
+  const statusEl = document.getElementById('status');
+
+  const LAYOUTS = {
+    single: { cols: 1, rows: 1 },
+    twoup: { cols: 1, rows: 2 },
+    fourup: { cols: 2, rows: 2 },
+  };
+
+  const A4 = [595.28, 841.89];
+
+  let entries = [];
+
+  function setStatus(message, type) {
+    statusEl.textContent = message;
+    statusEl.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function getLayout() {
+    const checked = layoutListEl.querySelector('input[name="layout"]:checked');
+    return checked ? checked.value : 'single';
+  }
+
+  layoutListEl.addEventListener('change', () => {
+    const layout = getLayout();
+    for (const option of layoutListEl.querySelectorAll('.layout-option')) {
+      option.classList.toggle('selected', option.dataset.layout === layout);
+    }
+  });
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+          URL.revokeObjectURL(url);
+          reject(new Error(`${file.name} の画像サイズを取得できませんでした。`));
+          return;
+        }
+        resolve({ img, url });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`${file.name} を画像として読み込めませんでした。`));
+      };
+      img.src = url;
+    });
+  }
+
+  function renderFileList() {
+    fileListEl.innerHTML = '';
+    entries.forEach((entry, index) => {
+      const li = document.createElement('li');
+
+      const orderIndex = document.createElement('span');
+      orderIndex.className = 'order-index';
+      orderIndex.textContent = `${index + 1}.`;
+      li.appendChild(orderIndex);
+
+      const thumbWrap = document.createElement('span');
+      thumbWrap.className = 'thumb-wrap';
+      const thumb = document.createElement('img');
+      thumb.src = entry.url;
+      thumb.alt = '';
+      thumb.style.transform = `rotate(${entry.rotation}deg)`;
+      thumbWrap.appendChild(thumb);
+      li.appendChild(thumbWrap);
+
+      const name = document.createElement('span');
+      name.className = 'file-name';
+      name.textContent = entry.file.name;
+      li.appendChild(name);
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'item-btn';
+      upBtn.textContent = '↑';
+      upBtn.setAttribute('aria-label', `${entry.file.name} を1つ前に移動`);
+      upBtn.disabled = index === 0;
+      upBtn.addEventListener('click', () => moveEntry(entry, -1));
+      li.appendChild(upBtn);
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'item-btn';
+      downBtn.textContent = '↓';
+      downBtn.setAttribute('aria-label', `${entry.file.name} を1つ後に移動`);
+      downBtn.disabled = index === entries.length - 1;
+      downBtn.addEventListener('click', () => moveEntry(entry, 1));
+      li.appendChild(downBtn);
+
+      const rotateBtn = document.createElement('button');
+      rotateBtn.type = 'button';
+      rotateBtn.className = 'item-btn';
+      rotateBtn.textContent = '↻';
+      rotateBtn.setAttribute('aria-label', `${entry.file.name} を90度回転`);
+      rotateBtn.addEventListener('click', () => rotateEntry(entry));
+      li.appendChild(rotateBtn);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'item-btn';
+      removeBtn.textContent = '×';
+      removeBtn.setAttribute('aria-label', `${entry.file.name} を選択から削除`);
+      removeBtn.addEventListener('click', () => removeEntry(entry));
+      li.appendChild(removeBtn);
+
+      fileListEl.appendChild(li);
+    });
+    fileListActionsEl.hidden = entries.length === 0;
+    createBtn.disabled = entries.length === 0;
+  }
+
+  function rotateEntry(entry) {
+    entry.rotation = (entry.rotation + 90) % 360;
+    renderFileList();
+  }
+
+  function moveEntry(entry, delta) {
+    const idx = entries.indexOf(entry);
+    const newIdx = idx + delta;
+    if (idx === -1 || newIdx < 0 || newIdx >= entries.length) {
+      return;
+    }
+    entries.splice(idx, 1);
+    entries.splice(newIdx, 0, entry);
+    renderFileList();
+  }
+
+  function removeEntry(entry) {
+    const idx = entries.indexOf(entry);
+    if (idx === -1) {
+      return;
+    }
+    URL.revokeObjectURL(entry.url);
+    entries.splice(idx, 1);
+    renderFileList();
+    fileInfo.textContent = entries.length > 0
+      ? `現在 ${entries.length} 枚の写真が選択されています。`
+      : 'ファイルが選択されていません。';
+    setStatus('', '');
+  }
+
+  clearAllBtn.addEventListener('click', () => {
+    for (const entry of entries) {
+      URL.revokeObjectURL(entry.url);
+    }
+    entries = [];
+    renderFileList();
+    fileInfo.textContent = 'ファイルが選択されていません。';
+    setStatus('', '');
+  });
+
+  fileInput.addEventListener('change', async () => {
+    const files = Array.from(fileInput.files || []);
+    fileInput.value = '';
+    if (files.length === 0) {
+      return;
+    }
+
+    const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      setStatus('画像ファイルを選択してください。', 'error');
+      return;
+    }
+
+    setStatus('', '');
+    fileInfo.textContent = '写真を読み込んでいます…';
+
+    const failedNames = [];
+    let addedCount = 0;
+    for (const file of imageFiles) {
+      try {
+        const { img, url } = await loadImage(file);
+        entries.push({ file, img, url, rotation: 0 });
+        addedCount++;
+      } catch (err) {
+        failedNames.push(file.name);
+      }
+    }
+
+    renderFileList();
+
+    const skipped = files.length - imageFiles.length;
+    const notes = [];
+    if (skipped > 0) {
+      notes.push(`画像以外の ${skipped} 個のファイルはスキップしました`);
+    }
+    if (failedNames.length > 0) {
+      notes.push(`${failedNames.length} 枚の写真の読み込みに失敗しました（${failedNames.join(', ')}）`);
+    }
+    fileInfo.textContent = entries.length > 0
+      ? `現在 ${entries.length} 枚の写真が選択されています（今回 ${addedCount} 枚追加${notes.length > 0 ? `。${notes.join('。')}` : ''}）。`
+      : '写真を読み込めませんでした。';
+    if (failedNames.length > 0) {
+      setStatus(`一部の写真を読み込めませんでした: ${failedNames.join(', ')}`, 'error');
+    }
+  });
+
+  function renderRotatedCanvas(img, rotation) {
+    const swap = rotation % 180 !== 0;
+    const w = swap ? img.naturalHeight : img.naturalWidth;
+    const h = swap ? img.naturalWidth : img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+    return canvas;
+  }
+
+  function canvasToBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('画像の変換に失敗しました。'));
+        }
+      }, 'image/jpeg', 0.92);
+    });
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function formatTimestamp(date) {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
+  }
+
+  async function buildPdf(snapshot) {
+    const pdfDoc = await PDFLib.PDFDocument.create();
+    const [pageW, pageH] = A4;
+    const margin = 28;
+    const gap = 14;
+    const { cols, rows } = LAYOUTS[getLayout()];
+    const perPage = cols * rows;
+    const cellW = (pageW - margin * 2 - gap * (cols - 1)) / cols;
+    const cellH = (pageH - margin * 2 - gap * (rows - 1)) / rows;
+
+    for (let pageStart = 0; pageStart < snapshot.length; pageStart += perPage) {
+      const page = pdfDoc.addPage(A4);
+      const group = snapshot.slice(pageStart, pageStart + perPage);
+
+      for (let i = 0; i < group.length; i++) {
+        const entry = group[i];
+        setStatus(`PDFを作成しています…（${pageStart + i + 1}/${snapshot.length}）`, 'info');
+
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cellX = margin + col * (cellW + gap);
+        const cellYTop = pageH - margin - row * (cellH + gap);
+        const cellYBottom = cellYTop - cellH;
+
+        const canvas = renderRotatedCanvas(entry.img, entry.rotation);
+        const blob = await canvasToBlob(canvas);
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const image = await pdfDoc.embedJpg(bytes);
+
+        const scale = Math.min(cellW / canvas.width, cellH / canvas.height);
+        const drawW = canvas.width * scale;
+        const drawH = canvas.height * scale;
+        const drawX = cellX + (cellW - drawW) / 2;
+        const drawY = cellYBottom + (cellH - drawH) / 2;
+
+        page.drawImage(image, { x: drawX, y: drawY, width: drawW, height: drawH });
+      }
+    }
+
+    return pdfDoc.save();
+  }
+
+  createBtn.addEventListener('click', async () => {
+    if (entries.length === 0) {
+      return;
+    }
+
+    createBtn.disabled = true;
+    setStatus('PDFを作成しています…', 'info');
+
+    const snapshot = entries.map((entry) => ({ img: entry.img, rotation: entry.rotation }));
+
+    try {
+      const bytes = await buildPdf(snapshot);
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `photos_${formatTimestamp(new Date())}.pdf`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setStatus(`完了しました（${snapshot.length} 枚の写真をPDFにまとめました）。`, 'success');
+    } catch (err) {
+      setStatus(err.message || 'PDFの作成中にエラーが発生しました。', 'error');
+    } finally {
+      createBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
