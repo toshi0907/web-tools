@@ -21,55 +21,6 @@
     padding: 1.2rem;
   }
 
-  .set-form {
-    display: grid;
-    gap: 0.8rem;
-  }
-
-  .set-form label {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--muted);
-    margin-bottom: 0.3rem;
-  }
-
-  .set-form input[type="text"] {
-    width: 100%;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: inherit;
-    font-size: 0.95rem;
-  }
-
-  .pattern-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 0.8rem;
-  }
-
-  .flags-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .flags-row label {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--fg);
-    margin-bottom: 0;
-    font-size: 0.9rem;
-  }
-
-  .form-buttons {
-    display: flex;
-    gap: 0.6rem;
-  }
-
   button {
     font-family: inherit;
     font-size: 0.9rem;
@@ -96,53 +47,148 @@
     cursor: not-allowed;
   }
 
-  .form-error {
-    color: #d64545;
-    font-size: 0.85rem;
-    min-height: 1.2em;
+  input[type="text"] {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.9rem;
   }
 
+  input[type="text"].invalid {
+    border-color: #d64545;
+  }
+
+  /* クイックリファレンス */
+  .quick-ref {
+    margin-bottom: 1.2rem;
+  }
+
+  .quick-ref summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.9rem;
+    padding: 0.3rem 0;
+  }
+
+  .quick-ref-body {
+    margin-top: 0.8rem;
+    overflow-x: auto;
+  }
+
+  .quick-ref table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+  }
+
+  .quick-ref th,
+  .quick-ref td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .quick-ref code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--bg);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+  }
+
+  .quick-ref h3 {
+    font-size: 0.9rem;
+    margin: 1rem 0 0.4rem;
+  }
+
+  .quick-ref h3:first-child {
+    margin-top: 0;
+  }
+
+  /* セット一覧 */
   .set-list {
     display: grid;
-    gap: 0.6rem;
-    margin-top: 1rem;
+    gap: 0.8rem;
   }
 
   .set-item {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.7rem 0.9rem;
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.8rem 0.9rem;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--bg);
   }
 
-  .set-item .set-info {
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .set-row-top .s-name {
     flex: 1;
-    min-width: 0;
+    min-width: 120px;
   }
 
-  .set-item .set-name {
-    font-weight: 600;
-  }
-
-  .set-item .set-detail {
-    font-size: 0.82rem;
-    color: var(--muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    overflow-wrap: anywhere;
-  }
-
-  .set-item .set-actions {
+  .set-row-top .set-item-actions {
     display: flex;
     gap: 0.3rem;
     flex-shrink: 0;
   }
 
-  .set-item .set-actions button {
+  .set-row-top .set-item-actions button {
     padding: 0.35rem 0.6rem;
     font-size: 0.85rem;
+  }
+
+  .set-field {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .set-field label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+  }
+
+  .set-field input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .set-row-flags {
+    font-size: 0.85rem;
+  }
+
+  .set-row-flags label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .set-row-flags .per-line-label {
+    margin-left: auto;
+    color: var(--fg);
+  }
+
+  .set-error {
+    color: #d64545;
+    font-size: 0.82rem;
+    margin: 0;
+  }
+
+  .set-hint {
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin: 0;
   }
 
   .toolbar {
@@ -152,22 +198,22 @@
     flex-wrap: wrap;
   }
 
+  .empty-hint {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* テキスト変換 */
   .transform-area {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 1rem;
     margin-top: 1rem;
   }
 
-  @media (max-width: 700px) {
-    .transform-area, .pattern-row {
-      grid-template-columns: 1fr;
-    }
-  }
-
   .transform-area textarea {
     width: 100%;
-    min-height: 260px;
+    min-height: 180px;
     padding: 0.7rem;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -205,11 +251,6 @@
     color: #d64545;
     font-size: 0.85rem;
   }
-
-  .empty-hint {
-    color: var(--muted);
-    font-size: 0.9rem;
-  }
 </style>
 </head>
 <body>
@@ -220,45 +261,40 @@
     <p>正規表現（検索パターン＋置換文字列）のセットを登録しておき、入力したテキストにリアルタイムで適用します。複数のセットを選んで順番に連続適用できます。</p>
   </header>
 
-  <h2 id="form-heading">正規表現セットを追加</h2>
-  <div class="card">
-    <form class="set-form" id="set-form">
-      <div>
-        <label for="input-name">セット名</label>
-        <input type="text" id="input-name" placeholder="例: 全角数字を半角に" required>
-      </div>
-      <div class="pattern-row">
-        <div>
-          <label for="input-pattern">検索パターン（正規表現）</label>
-          <input type="text" id="input-pattern" placeholder="例: [０-９]" required>
-        </div>
-        <div>
-          <label for="input-replacement">置換文字列</label>
-          <input type="text" id="input-replacement" placeholder="例: $&amp;（$1などのグループ参照も可）">
-        </div>
-      </div>
-      <div>
-        <label>フラグ</label>
-        <div class="flags-row">
-          <label><input type="checkbox" id="flag-g" checked> g（全体を置換）</label>
-          <label><input type="checkbox" id="flag-i"> i（大文字小文字を無視）</label>
-          <label><input type="checkbox" id="flag-m"> m（複数行モード）</label>
-          <label><input type="checkbox" id="flag-s"> s（.が改行にもマッチ）</label>
-        </div>
-      </div>
-      <p class="form-error" id="form-error"></p>
-      <div class="form-buttons">
-        <button type="submit" class="primary" id="submit-btn">追加</button>
-        <button type="button" id="cancel-edit-btn" hidden>キャンセル</button>
-      </div>
-    </form>
-  </div>
+  <details class="quick-ref">
+    <summary>正規表現クイックリファレンス</summary>
+    <div class="quick-ref-body">
+      <h3>検索パターンでよく使う記法</h3>
+      <table>
+        <tr><td><code>.</code></td><td>改行以外の任意の1文字</td></tr>
+        <tr><td><code>\d</code> / <code>\D</code></td><td>数字 / 数字以外</td></tr>
+        <tr><td><code>\w</code> / <code>\W</code></td><td>英数字とアンダースコア / それ以外</td></tr>
+        <tr><td><code>\s</code> / <code>\S</code></td><td>空白文字（スペース・タブ・改行など） / それ以外</td></tr>
+        <tr><td><code>^</code> / <code>$</code></td><td>行頭 / 行末（「1行ずつ処理」を使うと各行の先頭・末尾になる）</td></tr>
+        <tr><td><code>*</code> / <code>+</code> / <code>?</code></td><td>直前の要素が0回以上 / 1回以上 / 0か1回</td></tr>
+        <tr><td><code>{n}</code> / <code>{n,m}</code></td><td>ちょうどn回 / n〜m回</td></tr>
+        <tr><td><code>[abc]</code> / <code>[^abc]</code></td><td>a・b・cのいずれか / a・b・c以外</td></tr>
+        <tr><td><code>a|b</code></td><td>aまたはb</td></tr>
+        <tr><td><code>(...)</code></td><td>グループ化（置換側で <code>$1</code>, <code>$2</code> ... として参照可能）</td></tr>
+        <tr><td><code>(?:...)</code></td><td>参照しないグループ化</td></tr>
+        <tr><td><code>(?=...)</code> / <code>(?!...)</code></td><td>直後に...が続く / 続かない（先読み）</td></tr>
+        <tr><td><code>\.</code> <code>\(</code> など</td><td>記号そのものを検索したいときのエスケープ</td></tr>
+      </table>
+      <h3>置換文字列でよく使う記法</h3>
+      <table>
+        <tr><td><code>$1</code>, <code>$2</code> ...</td><td>検索パターンの対応するグループにマッチした文字列</td></tr>
+        <tr><td><code>$&amp;</code></td><td>マッチした文字列全体</td></tr>
+        <tr><td><code>$$</code></td><td><code>$</code> 自体</td></tr>
+      </table>
+    </div>
+  </details>
 
-  <h2>登録済みのセット</h2>
+  <h2>正規表現セット</h2>
   <div class="card">
-    <p class="empty-hint" id="empty-hint">まだセットが登録されていません。</p>
+    <p class="empty-hint" id="empty-hint">まだセットが登録されていません。「セットを追加」から作成してください。</p>
     <div class="set-list" id="set-list"></div>
     <div class="toolbar">
+      <button type="button" class="primary" id="add-set-btn">セットを追加</button>
       <button type="button" id="export-btn">エクスポート</button>
       <button type="button" id="import-btn">インポート</button>
       <input type="file" id="import-file" accept="application/json" hidden>
@@ -286,21 +322,9 @@
 (function () {
   const STORAGE_KEY = 'regex-replacer-sets';
 
-  const formEl = document.getElementById('set-form');
-  const nameInput = document.getElementById('input-name');
-  const patternInput = document.getElementById('input-pattern');
-  const replacementInput = document.getElementById('input-replacement');
-  const flagG = document.getElementById('flag-g');
-  const flagI = document.getElementById('flag-i');
-  const flagM = document.getElementById('flag-m');
-  const flagS = document.getElementById('flag-s');
-  const formError = document.getElementById('form-error');
-  const submitBtn = document.getElementById('submit-btn');
-  const cancelEditBtn = document.getElementById('cancel-edit-btn');
-  const formHeading = document.getElementById('form-heading');
-
   const setListEl = document.getElementById('set-list');
   const emptyHint = document.getElementById('empty-hint');
+  const addSetBtn = document.getElementById('add-set-btn');
 
   const exportBtn = document.getElementById('export-btn');
   const importBtn = document.getElementById('import-btn');
@@ -312,7 +336,6 @@
   const transformErrors = document.getElementById('transform-errors');
 
   let sets = loadSets();
-  let editingId = null;
 
   function loadSets() {
     try {
@@ -327,18 +350,18 @@
   }
 
   function isValidSetShape(item) {
-    return item && typeof item === 'object' &&
-      typeof item.pattern === 'string' && item.pattern.length > 0;
+    return item && typeof item === 'object' && typeof item.pattern === 'string';
   }
 
   function normalizeSet(item) {
     return {
       id: typeof item.id === 'string' && item.id ? item.id : createId(),
-      name: typeof item.name === 'string' && item.name ? item.name : item.pattern,
+      name: typeof item.name === 'string' ? item.name : '',
       pattern: item.pattern,
       flags: typeof item.flags === 'string' ? item.flags : '',
       replacement: typeof item.replacement === 'string' ? item.replacement : '',
-      enabled: item.enabled !== false
+      enabled: item.enabled !== false,
+      perLine: item.perLine === true
     };
   }
 
@@ -355,91 +378,32 @@
     }
   }
 
-  function getFlagsFromCheckboxes() {
-    let flags = '';
-    if (flagG.checked) flags += 'g';
-    if (flagI.checked) flags += 'i';
-    if (flagM.checked) flags += 'm';
-    if (flagS.checked) flags += 's';
-    return flags;
-  }
-
-  function setFlagsCheckboxes(flags) {
-    flagG.checked = flags.includes('g');
-    flagI.checked = flags.includes('i');
-    flagM.checked = flags.includes('m');
-    flagS.checked = flags.includes('s');
-  }
-
-  function resetForm() {
-    formEl.reset();
-    flagG.checked = true;
-    formError.textContent = '';
-    editingId = null;
-    submitBtn.textContent = '追加';
-    formHeading.textContent = '正規表現セットを追加';
-    cancelEditBtn.hidden = true;
-  }
-
-  function startEdit(set) {
-    editingId = set.id;
-    nameInput.value = set.name;
-    patternInput.value = set.pattern;
-    replacementInput.value = set.replacement;
-    setFlagsCheckboxes(set.flags);
-    formError.textContent = '';
-    submitBtn.textContent = '更新';
-    formHeading.textContent = 'セットを編集';
-    cancelEditBtn.hidden = false;
-    nameInput.focus();
-  }
-
-  formEl.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const name = nameInput.value.trim();
-    const pattern = patternInput.value;
-    const replacement = replacementInput.value;
-    const flags = getFlagsFromCheckboxes();
-
-    if (!pattern) {
-      formError.textContent = '検索パターンを入力してください。';
-      return;
-    }
+  function validateSet(set) {
+    if (!set.pattern) return { ok: false, hint: '検索パターンを入力してください（未入力の間はこのセットは適用されません）。' };
     try {
-      new RegExp(pattern, flags);
+      new RegExp(set.pattern, set.flags);
+      return { ok: true };
     } catch (e) {
-      formError.textContent = '正規表現が不正です: ' + e.message;
-      return;
+      return { ok: false, error: '正規表現が不正です: ' + e.message };
     }
-    formError.textContent = '';
+  }
 
-    if (editingId) {
-      const target = sets.find((s) => s.id === editingId);
-      if (target) {
-        target.name = name || pattern;
-        target.pattern = pattern;
-        target.flags = flags;
-        target.replacement = replacement;
-      }
-    } else {
-      sets.push({
-        id: createId(),
-        name: name || pattern,
-        pattern,
-        flags,
-        replacement,
-        enabled: true
-      });
-    }
-
+  addSetBtn.addEventListener('click', () => {
+    const set = {
+      id: createId(),
+      name: '',
+      pattern: '',
+      flags: 'g',
+      replacement: '',
+      enabled: true,
+      perLine: false
+    };
+    sets.push(set);
     saveSets();
-    resetForm();
     renderSets();
     runTransform();
-  });
-
-  cancelEditBtn.addEventListener('click', () => {
-    resetForm();
+    const newItem = setListEl.querySelector('[data-id="' + set.id + '"] .s-pattern');
+    if (newItem) newItem.focus();
   });
 
   function renderSets() {
@@ -447,94 +411,219 @@
     emptyHint.hidden = sets.length > 0;
 
     sets.forEach((set, index) => {
-      const item = document.createElement('div');
-      item.className = 'set-item';
+      setListEl.appendChild(buildSetItem(set, index));
+    });
+  }
 
+  function buildSetItem(set, index) {
+    const item = document.createElement('div');
+    item.className = 'set-item';
+    item.dataset.id = set.id;
+
+    // 1行目: 有効チェック、名前、並び替え・削除ボタン
+    const rowTop = document.createElement('div');
+    rowTop.className = 'set-row set-row-top';
+
+    const enabledCheckbox = document.createElement('input');
+    enabledCheckbox.type = 'checkbox';
+    enabledCheckbox.checked = set.enabled;
+    enabledCheckbox.title = '変換に使用する';
+    enabledCheckbox.addEventListener('change', () => {
+      set.enabled = enabledCheckbox.checked;
+      saveSets();
+      runTransform();
+    });
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 's-name';
+    nameInput.placeholder = 'セット名（省略可）';
+    nameInput.value = set.name;
+    nameInput.addEventListener('input', () => {
+      set.name = nameInput.value;
+      saveSets();
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'set-item-actions';
+
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.textContent = '↑';
+    upBtn.disabled = index === 0;
+    upBtn.addEventListener('click', () => {
+      [sets[index - 1], sets[index]] = [sets[index], sets[index - 1]];
+      saveSets();
+      renderSets();
+      runTransform();
+    });
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.textContent = '↓';
+    downBtn.disabled = index === sets.length - 1;
+    downBtn.addEventListener('click', () => {
+      [sets[index + 1], sets[index]] = [sets[index], sets[index + 1]];
+      saveSets();
+      renderSets();
+      runTransform();
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '削除';
+    deleteBtn.addEventListener('click', () => {
+      if (!confirm('「' + (set.name || set.pattern || '(名称未設定)') + '」を削除しますか？')) return;
+      sets = sets.filter((s) => s.id !== set.id);
+      saveSets();
+      renderSets();
+      runTransform();
+    });
+
+    actions.appendChild(upBtn);
+    actions.appendChild(downBtn);
+    actions.appendChild(deleteBtn);
+
+    rowTop.appendChild(enabledCheckbox);
+    rowTop.appendChild(nameInput);
+    rowTop.appendChild(actions);
+
+    // 2行目: 検索パターン・置換文字列
+    const rowPattern = document.createElement('div');
+    rowPattern.className = 'set-row set-row-pattern';
+
+    const patternField = document.createElement('div');
+    patternField.className = 'set-field';
+    const patternLabel = document.createElement('label');
+    patternLabel.textContent = '検索パターン（正規表現）';
+    const patternInput = document.createElement('input');
+    patternInput.type = 'text';
+    patternInput.className = 's-pattern';
+    patternInput.placeholder = '例: [０-９]';
+    patternInput.value = set.pattern;
+    patternField.appendChild(patternLabel);
+    patternField.appendChild(patternInput);
+
+    const replacementField = document.createElement('div');
+    replacementField.className = 'set-field';
+    const replacementLabel = document.createElement('label');
+    replacementLabel.textContent = '置換文字列';
+    const replacementInput = document.createElement('input');
+    replacementInput.type = 'text';
+    replacementInput.className = 's-replacement';
+    replacementInput.placeholder = '例: $&（$1などのグループ参照も可）';
+    replacementInput.value = set.replacement;
+    replacementField.appendChild(replacementLabel);
+    replacementField.appendChild(replacementInput);
+
+    rowPattern.appendChild(patternField);
+    rowPattern.appendChild(replacementField);
+
+    // 3行目: フラグ・1行ずつ処理
+    const rowFlags = document.createElement('div');
+    rowFlags.className = 'set-row set-row-flags';
+
+    const flagDefs = [
+      ['g', '全体を置換'],
+      ['i', '大文字小文字を無視'],
+      ['m', '複数行モード'],
+      ['s', '.が改行にもマッチ']
+    ];
+    const flagCheckboxes = {};
+    flagDefs.forEach(([flag, title]) => {
+      const label = document.createElement('label');
+      label.title = title;
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      checkbox.checked = set.enabled;
-      checkbox.title = '変換に使用する';
+      checkbox.checked = set.flags.includes(flag);
       checkbox.addEventListener('change', () => {
-        set.enabled = checkbox.checked;
-        saveSets();
-        runTransform();
+        set.flags = flagDefs.map(([f]) => f).filter((f) => flagCheckboxes[f].checked).join('');
+        onSetChanged();
       });
-
-      const info = document.createElement('div');
-      info.className = 'set-info';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'set-name';
-      nameEl.textContent = set.name;
-      const detailEl = document.createElement('div');
-      detailEl.className = 'set-detail';
-      detailEl.textContent = '/' + set.pattern + '/' + set.flags + '  →  "' + set.replacement + '"';
-      info.appendChild(nameEl);
-      info.appendChild(detailEl);
-
-      const actions = document.createElement('div');
-      actions.className = 'set-actions';
-
-      const upBtn = document.createElement('button');
-      upBtn.type = 'button';
-      upBtn.textContent = '↑';
-      upBtn.disabled = index === 0;
-      upBtn.addEventListener('click', () => {
-        [sets[index - 1], sets[index]] = [sets[index], sets[index - 1]];
-        saveSets();
-        renderSets();
-        runTransform();
-      });
-
-      const downBtn = document.createElement('button');
-      downBtn.type = 'button';
-      downBtn.textContent = '↓';
-      downBtn.disabled = index === sets.length - 1;
-      downBtn.addEventListener('click', () => {
-        [sets[index + 1], sets[index]] = [sets[index], sets[index + 1]];
-        saveSets();
-        renderSets();
-        runTransform();
-      });
-
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.textContent = '編集';
-      editBtn.addEventListener('click', () => startEdit(set));
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.textContent = '削除';
-      deleteBtn.addEventListener('click', () => {
-        if (!confirm('「' + set.name + '」を削除しますか？')) return;
-        sets = sets.filter((s) => s.id !== set.id);
-        if (editingId === set.id) resetForm();
-        saveSets();
-        renderSets();
-        runTransform();
-      });
-
-      actions.appendChild(upBtn);
-      actions.appendChild(downBtn);
-      actions.appendChild(editBtn);
-      actions.appendChild(deleteBtn);
-
-      item.appendChild(checkbox);
-      item.appendChild(info);
-      item.appendChild(actions);
-      setListEl.appendChild(item);
+      flagCheckboxes[flag] = checkbox;
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(flag));
+      rowFlags.appendChild(label);
     });
+
+    const perLineLabel = document.createElement('label');
+    perLineLabel.className = 'per-line-label';
+    perLineLabel.title = '複数行のテキストを1行ずつに分けて、行ごとに検索・置換を適用します（^や$を各行の先頭・末尾として使いたい場合に利用）';
+    const perLineCheckbox = document.createElement('input');
+    perLineCheckbox.type = 'checkbox';
+    perLineCheckbox.checked = set.perLine;
+    perLineCheckbox.addEventListener('change', () => {
+      set.perLine = perLineCheckbox.checked;
+      onSetChanged();
+    });
+    perLineLabel.appendChild(perLineCheckbox);
+    perLineLabel.appendChild(document.createTextNode('1行ずつ処理'));
+    rowFlags.appendChild(perLineLabel);
+
+    // エラー/ヒント表示
+    const messageEl = document.createElement('p');
+    messageEl.className = 'set-hint';
+
+    function onSetChanged() {
+      saveSets();
+      updateMessage();
+      runTransform();
+    }
+
+    function updateMessage() {
+      const result = validateSet(set);
+      patternInput.classList.toggle('invalid', !!result.error);
+      if (result.error) {
+        messageEl.textContent = result.error;
+        messageEl.className = 'set-error';
+      } else if (result.hint) {
+        messageEl.textContent = result.hint;
+        messageEl.className = 'set-hint';
+      } else {
+        messageEl.textContent = '';
+        messageEl.className = 'set-hint';
+      }
+    }
+
+    patternInput.addEventListener('input', () => {
+      set.pattern = patternInput.value;
+      onSetChanged();
+    });
+    replacementInput.addEventListener('input', () => {
+      set.replacement = replacementInput.value;
+      onSetChanged();
+    });
+
+    updateMessage();
+
+    item.appendChild(rowTop);
+    item.appendChild(rowPattern);
+    item.appendChild(rowFlags);
+    item.appendChild(messageEl);
+
+    return item;
+  }
+
+  function applySet(set, text) {
+    const regex = new RegExp(set.pattern, set.flags);
+    if (!set.perLine) {
+      return text.replace(regex, set.replacement);
+    }
+    return text.split('\n').map((line) => {
+      // 行ごとに正規表現の状態（lastIndexなど）をリセットするため新規生成する
+      return line.replace(new RegExp(set.pattern, set.flags), set.replacement);
+    }).join('\n');
   }
 
   function runTransform() {
     const errors = [];
     let text = inputText.value;
 
-    sets.filter((s) => s.enabled).forEach((set) => {
+    sets.filter((s) => s.enabled && s.pattern).forEach((set) => {
       try {
-        const regex = new RegExp(set.pattern, set.flags);
-        text = text.replace(regex, set.replacement);
+        text = applySet(set, text);
       } catch (e) {
-        errors.push('「' + set.name + '」の適用に失敗しました: ' + e.message);
+        errors.push('「' + (set.name || set.pattern) + '」の適用に失敗しました: ' + e.message);
       }
     });
 
@@ -602,7 +691,6 @@
         );
         sets = replace ? imported : sets.concat(imported);
         saveSets();
-        resetForm();
         renderSets();
         runTransform();
       } catch (e) {
