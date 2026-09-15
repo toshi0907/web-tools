@@ -567,7 +567,7 @@
     function onSetChanged() {
       saveSets();
       updateMessage();
-      runTransform();
+      scheduleTransform();
     }
 
     function updateMessage() {
@@ -609,10 +609,11 @@
     if (!set.perLine) {
       return text.replace(regex, set.replacement);
     }
-    return text.split('\n').map((line) => {
-      // 行ごとに正規表現の状態（lastIndexなど）をリセットするため新規生成する
-      return line.replace(new RegExp(set.pattern, set.flags), set.replacement);
-    }).join('\n');
+    // 改行文字自体は保持したまま、行本体（\r\n・\r・\n の間の部分）だけに置換を適用する
+    return text.split(/(\r\n|\r|\n)/).map((part, i) => {
+      if (i % 2 === 1) return part;
+      return part.replace(regex, set.replacement);
+    }).join('');
   }
 
   function runTransform() {
@@ -632,10 +633,12 @@
   }
 
   let transformTimer = null;
-  inputText.addEventListener('input', () => {
+  function scheduleTransform() {
     clearTimeout(transformTimer);
     transformTimer = setTimeout(runTransform, 150);
-  });
+  }
+
+  inputText.addEventListener('input', scheduleTransform);
 
   outputText.addEventListener('click', async () => {
     if (!outputText.value) return;
