@@ -348,7 +348,11 @@
   }
 
   function saveSets() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+    } catch (e) {
+      alert('セットの保存に失敗しました（ブラウザのストレージが利用できないか、容量が上限に達している可能性があります）。');
+    }
   }
 
   function getFlagsFromCheckboxes() {
@@ -538,7 +542,11 @@
     transformErrors.textContent = errors.join(' / ');
   }
 
-  inputText.addEventListener('input', runTransform);
+  let transformTimer = null;
+  inputText.addEventListener('input', () => {
+    clearTimeout(transformTimer);
+    transformTimer = setTimeout(runTransform, 150);
+  });
 
   outputText.addEventListener('click', async () => {
     if (!outputText.value) return;
