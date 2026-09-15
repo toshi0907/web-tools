@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>正規表現置換ツール - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
+<style>
+  h2 {
+    font-size: 1.1rem;
+    margin: 2rem 0 0.8rem;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+  }
+
+  .set-form {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .set-form label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .set-form input[type="text"] {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+
+  .pattern-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.8rem;
+  }
+
+  .flags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .flags-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--fg);
+    margin-bottom: 0;
+    font-size: 0.9rem;
+  }
+
+  .form-buttons {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .form-error {
+    color: #d64545;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+  }
+
+  .set-list {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .set-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  .set-item .set-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .set-item .set-name {
+    font-weight: 600;
+  }
+
+  .set-item .set-detail {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
+
+  .set-item .set-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .set-item .set-actions button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .transform-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  @media (max-width: 700px) {
+    .transform-area, .pattern-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .transform-area textarea {
+    width: 100%;
+    min-height: 260px;
+    padding: 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+
+  .transform-area .field-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  #output-text {
+    cursor: pointer;
+  }
+
+  .copy-hint {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+    min-height: 1.2em;
+  }
+
+  .copy-hint.copied {
+    color: var(--accent);
+  }
+
+  .transform-errors {
+    margin-top: 0.8rem;
+    color: #d64545;
+    font-size: 0.85rem;
+  }
+
+  .empty-hint {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>正規表現置換ツール</h1>
+    <p>正規表現（検索パターン＋置換文字列）のセットを登録しておき、入力したテキストにリアルタイムで適用します。複数のセットを選んで順番に連続適用できます。</p>
+  </header>
+
+  <h2 id="form-heading">正規表現セットを追加</h2>
+  <div class="card">
+    <form class="set-form" id="set-form">
+      <div>
+        <label for="input-name">セット名</label>
+        <input type="text" id="input-name" placeholder="例: 全角数字を半角に" required>
+      </div>
+      <div class="pattern-row">
+        <div>
+          <label for="input-pattern">検索パターン（正規表現）</label>
+          <input type="text" id="input-pattern" placeholder="例: [０-９]" required>
+        </div>
+        <div>
+          <label for="input-replacement">置換文字列</label>
+          <input type="text" id="input-replacement" placeholder="例: $&amp;（$1などのグループ参照も可）">
+        </div>
+      </div>
+      <div>
+        <label>フラグ</label>
+        <div class="flags-row">
+          <label><input type="checkbox" id="flag-g" checked> g（全体を置換）</label>
+          <label><input type="checkbox" id="flag-i"> i（大文字小文字を無視）</label>
+          <label><input type="checkbox" id="flag-m"> m（複数行モード）</label>
+          <label><input type="checkbox" id="flag-s"> s（.が改行にもマッチ）</label>
+        </div>
+      </div>
+      <p class="form-error" id="form-error"></p>
+      <div class="form-buttons">
+        <button type="submit" class="primary" id="submit-btn">追加</button>
+        <button type="button" id="cancel-edit-btn" hidden>キャンセル</button>
+      </div>
+    </form>
+  </div>
+
+  <h2>登録済みのセット</h2>
+  <div class="card">
+    <p class="empty-hint" id="empty-hint">まだセットが登録されていません。</p>
+    <div class="set-list" id="set-list"></div>
+    <div class="toolbar">
+      <button type="button" id="export-btn">エクスポート</button>
+      <button type="button" id="import-btn">インポート</button>
+      <input type="file" id="import-file" accept="application/json" hidden>
+    </div>
+  </div>
+
+  <h2>テキスト変換</h2>
+  <div class="card">
+    <div class="transform-area">
+      <div>
+        <p class="field-label">入力テキスト</p>
+        <textarea id="input-text" placeholder="ここにテキストを入力してください"></textarea>
+      </div>
+      <div>
+        <p class="field-label">出力テキスト（チェックしたセットを上から順に適用）</p>
+        <textarea id="output-text" readonly placeholder="変換結果がここに表示されます"></textarea>
+        <p class="copy-hint" id="copy-hint">出力欄をクリックするとクリップボードにコピーできます</p>
+      </div>
+    </div>
+    <div class="transform-errors" id="transform-errors"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'regex-replacer-sets';
+
+  const formEl = document.getElementById('set-form');
+  const nameInput = document.getElementById('input-name');
+  const patternInput = document.getElementById('input-pattern');
+  const replacementInput = document.getElementById('input-replacement');
+  const flagG = document.getElementById('flag-g');
+  const flagI = document.getElementById('flag-i');
+  const flagM = document.getElementById('flag-m');
+  const flagS = document.getElementById('flag-s');
+  const formError = document.getElementById('form-error');
+  const submitBtn = document.getElementById('submit-btn');
+  const cancelEditBtn = document.getElementById('cancel-edit-btn');
+  const formHeading = document.getElementById('form-heading');
+
+  const setListEl = document.getElementById('set-list');
+  const emptyHint = document.getElementById('empty-hint');
+
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importFile = document.getElementById('import-file');
+
+  const inputText = document.getElementById('input-text');
+  const outputText = document.getElementById('output-text');
+  const copyHint = document.getElementById('copy-hint');
+  const transformErrors = document.getElementById('transform-errors');
+
+  let sets = loadSets();
+  let editingId = null;
+
+  function loadSets() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(isValidSetShape).map(normalizeSet);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function isValidSetShape(item) {
+    return item && typeof item === 'object' &&
+      typeof item.pattern === 'string' && item.pattern.length > 0;
+  }
+
+  function normalizeSet(item) {
+    return {
+      id: typeof item.id === 'string' && item.id ? item.id : createId(),
+      name: typeof item.name === 'string' && item.name ? item.name : item.pattern,
+      pattern: item.pattern,
+      flags: typeof item.flags === 'string' ? item.flags : '',
+      replacement: typeof item.replacement === 'string' ? item.replacement : '',
+      enabled: item.enabled !== false
+    };
+  }
+
+  function createId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'set-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  function saveSets() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sets));
+    } catch (e) {
+      alert('セットの保存に失敗しました（ブラウザのストレージが利用できないか、容量が上限に達している可能性があります）。');
+    }
+  }
+
+  function getFlagsFromCheckboxes() {
+    let flags = '';
+    if (flagG.checked) flags += 'g';
+    if (flagI.checked) flags += 'i';
+    if (flagM.checked) flags += 'm';
+    if (flagS.checked) flags += 's';
+    return flags;
+  }
+
+  function setFlagsCheckboxes(flags) {
+    flagG.checked = flags.includes('g');
+    flagI.checked = flags.includes('i');
+    flagM.checked = flags.includes('m');
+    flagS.checked = flags.includes('s');
+  }
+
+  function resetForm() {
+    formEl.reset();
+    flagG.checked = true;
+    formError.textContent = '';
+    editingId = null;
+    submitBtn.textContent = '追加';
+    formHeading.textContent = '正規表現セットを追加';
+    cancelEditBtn.hidden = true;
+  }
+
+  function startEdit(set) {
+    editingId = set.id;
+    nameInput.value = set.name;
+    patternInput.value = set.pattern;
+    replacementInput.value = set.replacement;
+    setFlagsCheckboxes(set.flags);
+    formError.textContent = '';
+    submitBtn.textContent = '更新';
+    formHeading.textContent = 'セットを編集';
+    cancelEditBtn.hidden = false;
+    nameInput.focus();
+  }
+
+  formEl.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const name = nameInput.value.trim();
+    const pattern = patternInput.value;
+    const replacement = replacementInput.value;
+    const flags = getFlagsFromCheckboxes();
+
+    if (!pattern) {
+      formError.textContent = '検索パターンを入力してください。';
+      return;
+    }
+    try {
+      new RegExp(pattern, flags);
+    } catch (e) {
+      formError.textContent = '正規表現が不正です: ' + e.message;
+      return;
+    }
+    formError.textContent = '';
+
+    if (editingId) {
+      const target = sets.find((s) => s.id === editingId);
+      if (target) {
+        target.name = name || pattern;
+        target.pattern = pattern;
+        target.flags = flags;
+        target.replacement = replacement;
+      }
+    } else {
+      sets.push({
+        id: createId(),
+        name: name || pattern,
+        pattern,
+        flags,
+        replacement,
+        enabled: true
+      });
+    }
+
+    saveSets();
+    resetForm();
+    renderSets();
+    runTransform();
+  });
+
+  cancelEditBtn.addEventListener('click', () => {
+    resetForm();
+  });
+
+  function renderSets() {
+    setListEl.innerHTML = '';
+    emptyHint.hidden = sets.length > 0;
+
+    sets.forEach((set, index) => {
+      const item = document.createElement('div');
+      item.className = 'set-item';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = set.enabled;
+      checkbox.title = '変換に使用する';
+      checkbox.addEventListener('change', () => {
+        set.enabled = checkbox.checked;
+        saveSets();
+        runTransform();
+      });
+
+      const info = document.createElement('div');
+      info.className = 'set-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'set-name';
+      nameEl.textContent = set.name;
+      const detailEl = document.createElement('div');
+      detailEl.className = 'set-detail';
+      detailEl.textContent = '/' + set.pattern + '/' + set.flags + '  →  "' + set.replacement + '"';
+      info.appendChild(nameEl);
+      info.appendChild(detailEl);
+
+      const actions = document.createElement('div');
+      actions.className = 'set-actions';
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.textContent = '↑';
+      upBtn.disabled = index === 0;
+      upBtn.addEventListener('click', () => {
+        [sets[index - 1], sets[index]] = [sets[index], sets[index - 1]];
+        saveSets();
+        renderSets();
+        runTransform();
+      });
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.textContent = '↓';
+      downBtn.disabled = index === sets.length - 1;
+      downBtn.addEventListener('click', () => {
+        [sets[index + 1], sets[index]] = [sets[index], sets[index + 1]];
+        saveSets();
+        renderSets();
+        runTransform();
+      });
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.textContent = '編集';
+      editBtn.addEventListener('click', () => startEdit(set));
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '削除';
+      deleteBtn.addEventListener('click', () => {
+        if (!confirm('「' + set.name + '」を削除しますか？')) return;
+        sets = sets.filter((s) => s.id !== set.id);
+        if (editingId === set.id) resetForm();
+        saveSets();
+        renderSets();
+        runTransform();
+      });
+
+      actions.appendChild(upBtn);
+      actions.appendChild(downBtn);
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
+      item.appendChild(checkbox);
+      item.appendChild(info);
+      item.appendChild(actions);
+      setListEl.appendChild(item);
+    });
+  }
+
+  function runTransform() {
+    const errors = [];
+    let text = inputText.value;
+
+    sets.filter((s) => s.enabled).forEach((set) => {
+      try {
+        const regex = new RegExp(set.pattern, set.flags);
+        text = text.replace(regex, set.replacement);
+      } catch (e) {
+        errors.push('「' + set.name + '」の適用に失敗しました: ' + e.message);
+      }
+    });
+
+    outputText.value = text;
+    transformErrors.textContent = errors.join(' / ');
+  }
+
+  let transformTimer = null;
+  inputText.addEventListener('input', () => {
+    clearTimeout(transformTimer);
+    transformTimer = setTimeout(runTransform, 150);
+  });
+
+  outputText.addEventListener('click', async () => {
+    if (!outputText.value) return;
+    try {
+      await navigator.clipboard.writeText(outputText.value);
+      copyHint.textContent = 'コピーしました';
+      copyHint.classList.add('copied');
+    } catch (e) {
+      copyHint.textContent = 'コピーに失敗しました。手動で選択してコピーしてください。';
+      copyHint.classList.remove('copied');
+    }
+    setTimeout(() => {
+      copyHint.textContent = '出力欄をクリックするとクリップボードにコピーできます';
+      copyHint.classList.remove('copied');
+    }, 2000);
+  });
+
+  exportBtn.addEventListener('click', () => {
+    const data = JSON.stringify(sets, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const filename = 'regex-sets_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
+      '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.json';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener('click', () => importFile.click());
+
+  importFile.addEventListener('change', () => {
+    const file = importFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        if (!Array.isArray(parsed)) throw new Error('配列形式のJSONではありません。');
+        const imported = parsed.filter(isValidSetShape).map((item) => normalizeSet({ ...item, id: null }));
+        if (imported.length === 0) {
+          alert('インポート可能なセットが見つかりませんでした。');
+          return;
+        }
+        const replace = confirm(
+          imported.length + '件のセットを読み込みました。\n' +
+          'OK: 既存のセットを置き換える\nキャンセル: 既存のセットに追加する'
+        );
+        sets = replace ? imported : sets.concat(imported);
+        saveSets();
+        resetForm();
+        renderSets();
+        runTransform();
+      } catch (e) {
+        alert('インポートに失敗しました: ' + e.message);
+      } finally {
+        importFile.value = '';
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  renderSets();
+  runTransform();
+}());
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
