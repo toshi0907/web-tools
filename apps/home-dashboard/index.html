@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ホームダッシュボード - web-tools</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3457d5">
+<style>
+  .page {
+    max-width: none;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin: 2rem 0 0.8rem;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--fg);
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  input[type="text"], select, textarea {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+
+  input[type="text"].invalid {
+    border-color: #d64545;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hint {
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin: 0.3rem 0 0;
+  }
+
+  .error {
+    color: #d64545;
+    font-size: 0.82rem;
+    margin: 0.3rem 0 0;
+  }
+
+  /* メモ */
+  #memo-input {
+    width: 100%;
+    min-height: 80px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .memo-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1rem;
+  }
+
+  .memo-item {
+    position: relative;
+    max-width: 260px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+
+  .memo-item p {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9rem;
+  }
+
+  .memo-item img {
+    display: block;
+    max-width: 240px;
+    max-height: 240px;
+    border-radius: 4px;
+  }
+
+  .memo-item .memo-delete {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .memo-item time {
+    display: block;
+    margin-top: 0.4rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+
+  /* 表示エリア（ペイン） */
+  .panes {
+    display: grid;
+    grid-template-columns: repeat(var(--pane-count, 1), 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  @media (max-width: 700px) {
+    .panes {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .pane {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .category-display {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    padding: 0.3rem 0.9rem 0.7rem;
+  }
+
+  .category-display summary {
+    cursor: pointer;
+    padding: 0.6rem 0;
+    font-weight: 600;
+    list-style: revert;
+  }
+
+  .bookmark-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .bookmark-links a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+
+  .bookmark-links a:hover {
+    color: var(--accent);
+  }
+
+  .bookmark-links img,
+  .bookmark-links .favicon-fallback {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .bookmark-links .favicon-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+
+  .empty-hint {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* 設定・管理エリア共通 */
+  details.section {
+    margin-bottom: 1.2rem;
+  }
+
+  details.section > summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 0.95rem;
+    padding: 0.4rem 0;
+  }
+
+  details.section > .card {
+    margin-top: 0.8rem;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+  }
+
+  .field-row label {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .domain-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .domain-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.82rem;
+    background: var(--bg);
+  }
+
+  .domain-chip button {
+    padding: 0 0.3rem;
+    border: none;
+    background: none;
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  /* カテゴリ・ブックマーク管理 */
+  .category-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    padding: 0.8rem 0.9rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .category-item .row-top {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .category-item .cat-name {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .category-item .row-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .category-item .row-actions button {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .category-item .row-options {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .category-item .row-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .bookmark-manage-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0.8rem 0;
+  }
+
+  .bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+  }
+
+  .bookmark-item img.bm-favicon-preview {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .bookmark-item input[type="text"] {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .bookmark-item .bm-title {
+    flex: 1;
+  }
+
+  .bookmark-item .bm-url {
+    flex: 2;
+  }
+
+  .bookmark-item .bm-favicon {
+    flex: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <a class="back-link" href="../../index.html">&larr; アプリ一覧に戻る</a>
+  <header class="page-header">
+    <h1>ホームダッシュボード</h1>
+    <p>よく使うブックマークをカテゴリ分けして並べ、上部にメモを残せる自分専用のホームページです。</p>
+  </header>
+
+  <h2>メモ</h2>
+  <div class="card">
+    <textarea id="memo-input" placeholder="テキストを入力するか、画像をコピーしてこの欄にCtrl+V（貼り付け）してください"></textarea>
+    <div class="toolbar">
+      <button type="button" class="primary" id="add-memo-btn">テキストメモを追加</button>
+    </div>
+    <p class="hint">画像は貼り付けた時点で自動的にメモとして追加されます。</p>
+    <div class="memo-list" id="memo-list"></div>
+  </div>
+
+  <h2>ブックマーク</h2>
+  <p class="empty-hint" id="panes-empty-hint">カテゴリがまだありません。下の「カテゴリとブックマークの管理」から追加してください。</p>
+  <div class="panes" id="panes"></div>
+
+  <details class="section">
+    <summary>表示設定</summary>
+    <div class="card">
+      <div class="field-row">
+        <label for="pane-count-select">ペイン数</label>
+        <select id="pane-count-select">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div>
+        <label>favicon自動取得を使わないドメイン</label>
+        <p class="hint">ここに登録したドメイン（サブドメインも含む）のブックマークは、外部のfavicon取得サービスを使わず、そのサイト自身の <code>/favicon.ico</code> を直接参照します。</p>
+        <div class="field-row">
+          <input type="text" id="excluded-domain-input" placeholder="例: example.com">
+          <button type="button" id="add-excluded-domain-btn">追加</button>
+        </div>
+        <div class="domain-list" id="excluded-domain-list"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="section">
+    <summary>カテゴリとブックマークの管理</summary>
+    <div class="card">
+      <button type="button" class="primary" id="add-category-btn">カテゴリを追加</button>
+      <div id="category-manage-list"></div>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <button type="button" id="export-btn">エクスポート</button>
+    <button type="button" id="import-btn">インポート</button>
+    <input type="file" id="import-file" accept="application/json" hidden>
+  </div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'home-dashboard-data';
+  const GOOGLE_FAVICON_BASE = 'https://www.google.com/s2/favicons';
+
+  const memoInput = document.getElementById('memo-input');
+  const addMemoBtn = document.getElementById('add-memo-btn');
+  const memoListEl = document.getElementById('memo-list');
+
+  const panesEl = document.getElementById('panes');
+  const panesEmptyHint = document.getElementById('panes-empty-hint');
+
+  const paneCountSelect = document.getElementById('pane-count-select');
+  const excludedDomainInput = document.getElementById('excluded-domain-input');
+  const addExcludedDomainBtn = document.getElementById('add-excluded-domain-btn');
+  const excludedDomainListEl = document.getElementById('excluded-domain-list');
+
+  const addCategoryBtn = document.getElementById('add-category-btn');
+  const categoryManageListEl = document.getElementById('category-manage-list');
+
+  const exportBtn = document.getElementById('export-btn');
+  const importBtn = document.getElementById('import-btn');
+  const importFile = document.getElementById('import-file');
+
+  let data = loadData();
+
+  function createId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  function defaultData() {
+    return { paneCount: 2, categories: [], bookmarks: [], memos: [], excludedDomains: [] };
+  }
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultData();
+      return normalizeData(JSON.parse(raw));
+    } catch (e) {
+      return defaultData();
+    }
+  }
+
+  function normalizeData(parsed) {
+    const base = defaultData();
+    if (!parsed || typeof parsed !== 'object') return base;
+
+    const paneCount = [1, 2, 3, 4].includes(parsed.paneCount) ? parsed.paneCount : base.paneCount;
+
+    const categories = Array.isArray(parsed.categories) ? parsed.categories
+      .filter((c) => c && typeof c === 'object' && typeof c.name === 'string')
+      .map((c, i) => ({
+        id: typeof c.id === 'string' && c.id ? c.id : createId(),
+        name: c.name,
+        pane: Number.isInteger(c.pane) && c.pane >= 0 && c.pane < paneCount ? c.pane : 0,
+        order: Number.isInteger(c.order) ? c.order : i,
+        collapsed: c.collapsed === true
+      })) : [];
+
+    const categoryIds = new Set(categories.map((c) => c.id));
+    const bookmarks = Array.isArray(parsed.bookmarks) ? parsed.bookmarks
+      .filter((b) => b && typeof b === 'object' && typeof b.url === 'string')
+      .map((b) => ({
+        id: typeof b.id === 'string' && b.id ? b.id : createId(),
+        categoryId: typeof b.categoryId === 'string' ? b.categoryId : '',
+        title: typeof b.title === 'string' ? b.title : '',
+        url: b.url,
+        favicon: typeof b.favicon === 'string' ? b.favicon : ''
+      }))
+      .filter((b) => categoryIds.has(b.categoryId)) : [];
+
+    const memos = Array.isArray(parsed.memos) ? parsed.memos
+      .filter((m) => m && typeof m === 'object' && (m.type === 'text' || m.type === 'image'))
+      .map((m) => ({
+        id: typeof m.id === 'string' && m.id ? m.id : createId(),
+        type: m.type,
+        content: typeof m.content === 'string' ? m.content : '',
+        createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString()
+      })) : [];
+
+    const excludedDomains = Array.isArray(parsed.excludedDomains)
+      ? parsed.excludedDomains.filter((d) => typeof d === 'string' && d)
+      : [];
+
+    return { paneCount, categories, bookmarks, memos, excludedDomains };
+  }
+
+  function saveData() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      alert('データの保存に失敗しました（ブラウザのストレージが利用できないか、容量が上限に達している可能性があります）。画像メモを減らすかエクスポートしてバックアップを取ってください。');
+    }
+  }
+
+  function isValidHttpUrl(url) {
+    try {
+      const u = new URL(url);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function getHostname(url) {
+    try {
+      return new URL(url).hostname;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function isExcludedDomain(hostname) {
+    return data.excludedDomains.some((d) => hostname === d || hostname.endsWith('.' + d));
+  }
+
+  function resolveFaviconUrl(bookmark) {
+    if (bookmark.favicon) return bookmark.favicon;
+    const hostname = getHostname(bookmark.url);
+    if (!hostname) return '';
+    if (isExcludedDomain(hostname)) {
+      return 'https://' + hostname + '/favicon.ico';
+    }
+    return GOOGLE_FAVICON_BASE + '?sz=32&domain=' + encodeURIComponent(hostname);
+  }
+
+  function faviconImg(bookmark, size) {
+    const img = document.createElement('img');
+    img.src = resolveFaviconUrl(bookmark);
+    img.alt = '';
+    img.width = size;
+    img.height = size;
+    img.referrerPolicy = 'no-referrer';
+    img.addEventListener('error', () => {
+      const fallback = document.createElement('span');
+      fallback.className = 'favicon-fallback';
+      fallback.textContent = '🔖';
+      img.replaceWith(fallback);
+    }, { once: true });
+    return img;
+  }
+
+  // ---------- メモ ----------
+
+  function addMemo(memo) {
+    data.memos.unshift({ id: createId(), createdAt: new Date().toISOString(), ...memo });
+    saveData();
+    renderMemos();
+  }
+
+  addMemoBtn.addEventListener('click', () => {
+    const text = memoInput.value.trim();
+    if (!text) return;
+    addMemo({ type: 'text', content: text });
+    memoInput.value = '';
+  });
+
+  memoInput.addEventListener('paste', (event) => {
+    const items = event.clipboardData && event.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        event.preventDefault();
+        const reader = new FileReader();
+        reader.onload = () => addMemo({ type: 'image', content: String(reader.result) });
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+  });
+
+  function renderMemos() {
+    memoListEl.innerHTML = '';
+    data.memos.forEach((memo) => {
+      const item = document.createElement('div');
+      item.className = 'memo-item';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'memo-delete';
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '×';
+      deleteBtn.title = '削除';
+      deleteBtn.addEventListener('click', () => {
+        data.memos = data.memos.filter((m) => m.id !== memo.id);
+        saveData();
+        renderMemos();
+      });
+      item.appendChild(deleteBtn);
+
+      if (memo.type === 'image') {
+        const img = document.createElement('img');
+        img.src = memo.content;
+        img.alt = '';
+        item.appendChild(img);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = memo.content;
+        item.appendChild(p);
+      }
+
+      const time = document.createElement('time');
+      const d = new Date(memo.createdAt);
+      if (!isNaN(d)) {
+        const pad = (n) => String(n).padStart(2, '0');
+        time.textContent = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) +
+          ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+      }
+      item.appendChild(time);
+
+      memoListEl.appendChild(item);
+    });
+  }
+
+  // ---------- 表示エリア（ペイン） ----------
+
+  function renderPanes() {
+    panesEl.innerHTML = '';
+    panesEl.style.setProperty('--pane-count', data.paneCount);
+    panesEmptyHint.hidden = data.categories.length > 0;
+
+    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
+
+    for (let paneIndex = 0; paneIndex < data.paneCount; paneIndex++) {
+      const pane = document.createElement('div');
+      pane.className = 'pane';
+      sorted.filter((c) => c.pane === paneIndex).forEach((category) => {
+        pane.appendChild(buildCategoryDisplay(category));
+      });
+      panesEl.appendChild(pane);
+    }
+  }
+
+  function buildCategoryDisplay(category) {
+    const details = document.createElement('details');
+    details.className = 'category-display';
+    details.open = !category.collapsed;
+
+    const summary = document.createElement('summary');
+    summary.textContent = category.name;
+    details.appendChild(summary);
+
+    const list = document.createElement('ul');
+    list.className = 'bookmark-links';
+
+    const bookmarks = data.bookmarks.filter((b) => b.categoryId === category.id && isValidHttpUrl(b.url));
+    if (bookmarks.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty-hint';
+      li.textContent = 'ブックマークがありません。';
+      list.appendChild(li);
+    } else {
+      bookmarks.forEach((bookmark) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = bookmark.url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.appendChild(faviconImg(bookmark, 16));
+        const span = document.createElement('span');
+        span.textContent = bookmark.title || bookmark.url;
+        a.appendChild(span);
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+    }
+
+    details.appendChild(list);
+    return details;
+  }
+
+  // ---------- 表示設定 ----------
+
+  function renderPaneCountSelect() {
+    paneCountSelect.value = String(data.paneCount);
+  }
+
+  paneCountSelect.addEventListener('change', () => {
+    const newCount = Number(paneCountSelect.value);
+    data.paneCount = newCount;
+    data.categories.forEach((c) => {
+      if (c.pane >= newCount) c.pane = newCount - 1;
+    });
+    saveData();
+    renderPanes();
+    renderCategoryManage();
+  });
+
+  function renderExcludedDomains() {
+    excludedDomainListEl.innerHTML = '';
+    data.excludedDomains.forEach((domain) => {
+      const chip = document.createElement('span');
+      chip.className = 'domain-chip';
+      const text = document.createElement('span');
+      text.textContent = domain;
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '×';
+      removeBtn.title = '削除';
+      removeBtn.addEventListener('click', () => {
+        data.excludedDomains = data.excludedDomains.filter((d) => d !== domain);
+        saveData();
+        renderExcludedDomains();
+        renderPanes();
+      });
+      chip.appendChild(text);
+      chip.appendChild(removeBtn);
+      excludedDomainListEl.appendChild(chip);
+    });
+  }
+
+  addExcludedDomainBtn.addEventListener('click', () => {
+    const domain = excludedDomainInput.value.trim().toLowerCase();
+    if (!domain) return;
+    if (!data.excludedDomains.includes(domain)) {
+      data.excludedDomains.push(domain);
+      saveData();
+      renderExcludedDomains();
+      renderPanes();
+    }
+    excludedDomainInput.value = '';
+  });
+
+  // ---------- カテゴリ・ブックマーク管理 ----------
+
+  addCategoryBtn.addEventListener('click', () => {
+    const category = {
+      id: createId(),
+      name: '',
+      pane: 0,
+      order: data.categories.length,
+      collapsed: false
+    };
+    data.categories.push(category);
+    saveData();
+    renderCategoryManage();
+    renderPanes();
+    const nameInput = categoryManageListEl.querySelector('[data-id="' + category.id + '"] .cat-name');
+    if (nameInput) nameInput.focus();
+  });
+
+  function renderCategoryManage() {
+    categoryManageListEl.innerHTML = '';
+    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
+    sorted.forEach((category, index) => {
+      categoryManageListEl.appendChild(buildCategoryManageItem(category, index, sorted.length));
+    });
+  }
+
+  function buildCategoryManageItem(category, index, total) {
+    const item = document.createElement('div');
+    item.className = 'category-item';
+    item.dataset.id = category.id;
+
+    const rowTop = document.createElement('div');
+    rowTop.className = 'row-top';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'cat-name';
+    nameInput.placeholder = 'カテゴリ名';
+    nameInput.value = category.name;
+    nameInput.addEventListener('input', () => {
+      category.name = nameInput.value;
+      saveData();
+      renderPanes();
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.textContent = '↑';
+    upBtn.disabled = index === 0;
+    upBtn.addEventListener('click', () => {
+      const other = findCategoryBySortedIndex(index - 1);
+      swapOrder(category, other);
+    });
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.textContent = '↓';
+    downBtn.disabled = index === total - 1;
+    downBtn.addEventListener('click', () => {
+      const other = findCategoryBySortedIndex(index + 1);
+      swapOrder(category, other);
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '削除';
+    deleteBtn.addEventListener('click', () => {
+      const bookmarkCount = data.bookmarks.filter((b) => b.categoryId === category.id).length;
+      const message = bookmarkCount > 0
+        ? '「' + (category.name || '(名称未設定)') + '」と、含まれる' + bookmarkCount + '件のブックマークを削除しますか？'
+        : '「' + (category.name || '(名称未設定)') + '」を削除しますか？';
+      if (!confirm(message)) return;
+      data.categories = data.categories.filter((c) => c.id !== category.id);
+      data.bookmarks = data.bookmarks.filter((b) => b.categoryId !== category.id);
+      saveData();
+      renderCategoryManage();
+      renderPanes();
+    });
+
+    actions.appendChild(upBtn);
+    actions.appendChild(downBtn);
+    actions.appendChild(deleteBtn);
+    rowTop.appendChild(nameInput);
+    rowTop.appendChild(actions);
+
+    const rowOptions = document.createElement('div');
+    rowOptions.className = 'row-options';
+
+    const paneLabel = document.createElement('label');
+    paneLabel.textContent = '配置ペイン: ';
+    const paneSelect = document.createElement('select');
+    for (let i = 0; i < data.paneCount; i++) {
+      const option = document.createElement('option');
+      option.value = String(i);
+      option.textContent = String(i + 1);
+      paneSelect.appendChild(option);
+    }
+    paneSelect.value = String(category.pane);
+    paneSelect.addEventListener('change', () => {
+      category.pane = Number(paneSelect.value);
+      saveData();
+      renderPanes();
+    });
+    paneLabel.appendChild(paneSelect);
+
+    const collapsedLabel = document.createElement('label');
+    const collapsedCheckbox = document.createElement('input');
+    collapsedCheckbox.type = 'checkbox';
+    collapsedCheckbox.checked = category.collapsed;
+    collapsedCheckbox.addEventListener('change', () => {
+      category.collapsed = collapsedCheckbox.checked;
+      saveData();
+      renderPanes();
+    });
+    collapsedLabel.appendChild(collapsedCheckbox);
+    collapsedLabel.appendChild(document.createTextNode('表示時は折りたたむ'));
+
+    rowOptions.appendChild(paneLabel);
+    rowOptions.appendChild(collapsedLabel);
+
+    const bookmarkList = document.createElement('div');
+    bookmarkList.className = 'bookmark-manage-list';
+    data.bookmarks.filter((b) => b.categoryId === category.id).forEach((bookmark, bIndex, arr) => {
+      bookmarkList.appendChild(buildBookmarkManageItem(bookmark, bIndex, arr.length));
+    });
+
+    const addBookmarkBtn = document.createElement('button');
+    addBookmarkBtn.type = 'button';
+    addBookmarkBtn.textContent = 'ブックマークを追加';
+    addBookmarkBtn.addEventListener('click', () => {
+      const bookmark = { id: createId(), categoryId: category.id, title: '', url: '', favicon: '' };
+      data.bookmarks.push(bookmark);
+      saveData();
+      renderCategoryManage();
+      renderPanes();
+      const urlInput = categoryManageListEl.querySelector('[data-bookmark-id="' + bookmark.id + '"] .bm-title');
+      if (urlInput) urlInput.focus();
+    });
+
+    item.appendChild(rowTop);
+    item.appendChild(rowOptions);
+    item.appendChild(bookmarkList);
+    item.appendChild(addBookmarkBtn);
+
+    return item;
+  }
+
+  function findCategoryBySortedIndex(index) {
+    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
+    return sorted[index];
+  }
+
+  function swapOrder(categoryA, categoryB) {
+    if (!categoryA || !categoryB) return;
+    const tmp = categoryA.order;
+    categoryA.order = categoryB.order;
+    categoryB.order = tmp;
+    saveData();
+    renderCategoryManage();
+    renderPanes();
+  }
+
+  function buildBookmarkManageItem(bookmark, index, total) {
+    const item = document.createElement('div');
+    item.className = 'bookmark-item';
+    item.dataset.bookmarkId = bookmark.id;
+
+    const preview = faviconImg(bookmark, 18);
+    preview.className = 'bm-favicon-preview';
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'bm-title';
+    titleInput.placeholder = 'タイトル';
+    titleInput.value = bookmark.title;
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.className = 'bm-url';
+    urlInput.placeholder = 'https://example.com';
+    urlInput.value = bookmark.url;
+
+    const faviconInput = document.createElement('input');
+    faviconInput.type = 'text';
+    faviconInput.className = 'bm-favicon';
+    faviconInput.placeholder = 'favicon URL（省略可・自動取得）';
+    faviconInput.value = bookmark.favicon;
+
+    titleInput.addEventListener('input', () => {
+      bookmark.title = titleInput.value;
+      saveData();
+      renderPanes();
+    });
+    urlInput.addEventListener('input', () => {
+      bookmark.url = urlInput.value;
+      urlInput.classList.toggle('invalid', !!urlInput.value && !isValidHttpUrl(urlInput.value));
+      saveData();
+      updatePreview();
+      renderPanes();
+    });
+    faviconInput.addEventListener('input', () => {
+      bookmark.favicon = faviconInput.value;
+      saveData();
+      updatePreview();
+      renderPanes();
+    });
+
+    function updatePreview() {
+      const current = item.querySelector('.bm-favicon-preview');
+      const fresh = faviconImg(bookmark, 18);
+      fresh.className = 'bm-favicon-preview';
+      if (current) current.replaceWith(fresh);
+    }
+
+    urlInput.classList.toggle('invalid', !!urlInput.value && !isValidHttpUrl(urlInput.value));
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.textContent = '↑';
+    upBtn.disabled = index === 0;
+    upBtn.addEventListener('click', () => moveBookmark(bookmark, -1));
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.textContent = '↓';
+    downBtn.disabled = index === total - 1;
+    downBtn.addEventListener('click', () => moveBookmark(bookmark, 1));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.textContent = '削除';
+    deleteBtn.addEventListener('click', () => {
+      if (!confirm('「' + (bookmark.title || bookmark.url || '(未設定)') + '」を削除しますか？')) return;
+      data.bookmarks = data.bookmarks.filter((b) => b.id !== bookmark.id);
+      saveData();
+      renderCategoryManage();
+      renderPanes();
+    });
+
+    actions.appendChild(upBtn);
+    actions.appendChild(downBtn);
+    actions.appendChild(deleteBtn);
+
+    item.appendChild(preview);
+    item.appendChild(titleInput);
+    item.appendChild(urlInput);
+    item.appendChild(faviconInput);
+    item.appendChild(actions);
+
+    return item;
+  }
+
+  function moveBookmark(bookmark, direction) {
+    const siblings = data.bookmarks.filter((b) => b.categoryId === bookmark.categoryId);
+    const currentIndex = siblings.indexOf(bookmark);
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= siblings.length) return;
+    const globalCurrentIndex = data.bookmarks.indexOf(bookmark);
+    const globalTargetIndex = data.bookmarks.indexOf(siblings[targetIndex]);
+    [data.bookmarks[globalCurrentIndex], data.bookmarks[globalTargetIndex]] =
+      [data.bookmarks[globalTargetIndex], data.bookmarks[globalCurrentIndex]];
+    saveData();
+    renderCategoryManage();
+    renderPanes();
+  }
+
+  // ---------- エクスポート・インポート ----------
+
+  exportBtn.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const filename = 'home-dashboard_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
+      '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.json';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener('click', () => importFile.click());
+
+  importFile.addEventListener('change', () => {
+    const file = importFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = normalizeData(JSON.parse(String(reader.result)));
+        const replace = confirm(
+          'データを読み込みました（カテゴリ' + parsed.categories.length + '件、ブックマーク' + parsed.bookmarks.length +
+          '件、メモ' + parsed.memos.length + '件）。\n' +
+          'OK: 既存のデータを置き換える\nキャンセル: 既存のデータに追加する'
+        );
+        if (replace) {
+          data = parsed;
+        } else {
+          const idMap = new Map();
+          const newCategories = parsed.categories.map((c) => {
+            const newId = createId();
+            idMap.set(c.id, newId);
+            return { ...c, id: newId, order: data.categories.length + c.order };
+          });
+          const newBookmarks = parsed.bookmarks.map((b) => ({
+            ...b,
+            id: createId(),
+            categoryId: idMap.get(b.categoryId) || ''
+          })).filter((b) => b.categoryId);
+          data.categories = data.categories.concat(newCategories);
+          data.bookmarks = data.bookmarks.concat(newBookmarks);
+          data.memos = data.memos.concat(parsed.memos.map((m) => ({ ...m, id: createId() })));
+          data.excludedDomains = Array.from(new Set(data.excludedDomains.concat(parsed.excludedDomains)));
+        }
+        saveData();
+        renderAll();
+      } catch (e) {
+        alert('インポートに失敗しました: ' + e.message);
+      } finally {
+        importFile.value = '';
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  function renderAll() {
+    renderMemos();
+    renderPanes();
+    renderPaneCountSelect();
+    renderExcludedDomains();
+    renderCategoryManage();
+  }
+
+  renderAll();
+}());
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
