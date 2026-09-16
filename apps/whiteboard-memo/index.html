@@ -9,6 +9,12 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3457d5">
 <style>
+  .page {
+    /* リサイズ時にcanvasの描画内容を縦横比を保たず引き伸ばして再描画するため、
+       ウィンドウ幅の変化が頻発しないよう画面幅を制限する */
+    max-width: 1200px;
+  }
+
   .toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -101,9 +107,6 @@
   }
   .tool-btn.active:hover {
     background: var(--accent);
-  }
-  .page {
-    max-width: 1200px;
   }
   .canvas-wrap {
     border: 1px solid var(--border);

@@ -9,7 +9,10 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3457d5">
 <style>
-  .page { max-width: 620px; }
+  .page {
+    /* 盤面のマス目は画面幅に比例して拡大するため、無制限に広げると崩れる */
+    max-width: 620px;
+  }
 
   .mode-select {
     display: flex;

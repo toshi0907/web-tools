@@ -9,10 +9,6 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3457d5">
 <style>
-  .page {
-    max-width: none;
-  }
-
   h2 {
     font-size: 1.1rem;
     margin: 2rem 0 0.8rem;
@@ -101,7 +97,6 @@
   }
 
   .memo-item {
-    position: relative;
     max-width: 260px;
     padding: 0.7rem 0.8rem;
     border: 1px solid var(--border);
@@ -123,13 +118,15 @@
     border-radius: 4px;
   }
 
-  .memo-item .memo-delete {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.3rem;
-    padding: 0.1rem 0.4rem;
+  .memo-item .memo-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .memo-item .memo-actions button {
+    padding: 0.15rem 0.5rem;
     font-size: 0.75rem;
-    line-height: 1.4;
   }
 
   .memo-item time {
@@ -367,8 +364,9 @@
     <textarea id="memo-input" placeholder="テキストを入力するか、画像をコピーしてこの欄にCtrl+V（貼り付け）してください"></textarea>
     <div class="toolbar">
       <button type="button" class="primary" id="add-memo-btn">テキストメモを追加</button>
+      <button type="button" id="cancel-memo-edit-btn" hidden>キャンセル</button>
     </div>
-    <p class="hint">画像は貼り付けた時点で自動的にメモとして追加されます。</p>
+    <p class="hint">画像は貼り付けた時点で自動的にメモとして追加されます。テキストメモは一覧の「編集」から内容を書き換えられます。</p>
     <div class="memo-list" id="memo-list"></div>
   </div>
 
@@ -422,6 +420,7 @@
 
   const memoInput = document.getElementById('memo-input');
   const addMemoBtn = document.getElementById('add-memo-btn');
+  const cancelMemoEditBtn = document.getElementById('cancel-memo-edit-btn');
   const memoListEl = document.getElementById('memo-list');
 
   const panesEl = document.getElementById('panes');
@@ -573,17 +572,48 @@
 
   // ---------- メモ ----------
 
+  let editingMemoId = null;
+
   function addMemo(memo) {
     data.memos.unshift({ id: createId(), createdAt: new Date().toISOString(), ...memo });
     saveData();
     renderMemos();
   }
 
+  function resetMemoForm() {
+    memoInput.value = '';
+    editingMemoId = null;
+    addMemoBtn.textContent = 'テキストメモを追加';
+    cancelMemoEditBtn.hidden = true;
+  }
+
+  function startMemoEdit(memo) {
+    editingMemoId = memo.id;
+    memoInput.value = memo.content;
+    addMemoBtn.textContent = '更新';
+    cancelMemoEditBtn.hidden = false;
+    memoInput.focus();
+  }
+
   addMemoBtn.addEventListener('click', () => {
     const text = memoInput.value.trim();
     if (!text) return;
-    addMemo({ type: 'text', content: text });
-    memoInput.value = '';
+    if (editingMemoId) {
+      const target = data.memos.find((m) => m.id === editingMemoId);
+      if (target) {
+        target.content = text;
+        saveData();
+      }
+      resetMemoForm();
+      renderMemos();
+    } else {
+      addMemo({ type: 'text', content: text });
+      memoInput.value = '';
+    }
+  });
+
+  cancelMemoEditBtn.addEventListener('click', () => {
+    resetMemoForm();
   });
 
   memoInput.addEventListener('paste', (event) => {
@@ -608,18 +638,6 @@
       const item = document.createElement('div');
       item.className = 'memo-item';
 
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'memo-delete';
-      deleteBtn.type = 'button';
-      deleteBtn.textContent = '×';
-      deleteBtn.title = '削除';
-      deleteBtn.addEventListener('click', () => {
-        data.memos = data.memos.filter((m) => m.id !== memo.id);
-        saveData();
-        renderMemos();
-      });
-      item.appendChild(deleteBtn);
-
       if (memo.type === 'image') {
         const img = document.createElement('img');
         img.src = memo.content;
@@ -630,6 +648,30 @@
         p.textContent = memo.content;
         item.appendChild(p);
       }
+
+      const actions = document.createElement('div');
+      actions.className = 'memo-actions';
+
+      if (memo.type === 'text') {
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.textContent = '編集';
+        editBtn.addEventListener('click', () => startMemoEdit(memo));
+        actions.appendChild(editBtn);
+      }
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '削除';
+      deleteBtn.addEventListener('click', () => {
+        data.memos = data.memos.filter((m) => m.id !== memo.id);
+        if (editingMemoId === memo.id) resetMemoForm();
+        saveData();
+        renderMemos();
+      });
+      actions.appendChild(deleteBtn);
+
+      item.appendChild(actions);
 
       const time = document.createElement('time');
       const d = new Date(memo.createdAt);
@@ -1082,6 +1124,7 @@
           data.memos = data.memos.concat(parsed.memos.map((m) => ({ ...m, id: createId() })));
           data.excludedDomains = Array.from(new Set(data.excludedDomains.concat(parsed.excludedDomains)));
         }
+        resetMemoForm();
         saveData();
         renderAll();
       } catch (e) {
