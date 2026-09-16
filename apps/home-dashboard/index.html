@@ -331,7 +331,7 @@
     background: var(--card-bg);
   }
 
-  .bookmark-item img.bm-favicon-preview {
+  .bookmark-item .bm-favicon-preview {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
@@ -544,19 +544,31 @@
     return GOOGLE_FAVICON_BASE + '?sz=32&domain=' + encodeURIComponent(hostname);
   }
 
-  function faviconImg(bookmark, size) {
+  function faviconFallback() {
+    const fallback = document.createElement('span');
+    fallback.className = 'favicon-fallback';
+    fallback.textContent = '🔖';
+    return fallback;
+  }
+
+  function faviconImg(bookmark, size, extraClassName) {
+    const buildFallback = () => {
+      const fallback = faviconFallback();
+      if (extraClassName) fallback.classList.add(extraClassName);
+      return fallback;
+    };
+    const url = resolveFaviconUrl(bookmark);
+    // 空文字を img.src に設定すると現在のページ自身を再取得してしまうため、
+    // URLが解決できない場合は最初からフォールバック表示にする
+    if (!url) return buildFallback();
     const img = document.createElement('img');
-    img.src = resolveFaviconUrl(bookmark);
+    img.src = url;
     img.alt = '';
     img.width = size;
     img.height = size;
     img.referrerPolicy = 'no-referrer';
-    img.addEventListener('error', () => {
-      const fallback = document.createElement('span');
-      fallback.className = 'favicon-fallback';
-      fallback.textContent = '🔖';
-      img.replaceWith(fallback);
-    }, { once: true });
+    if (extraClassName) img.classList.add(extraClassName);
+    img.addEventListener('error', () => img.replaceWith(buildFallback()), { once: true });
     return img;
   }
 
@@ -635,12 +647,16 @@
 
   // ---------- 表示エリア（ペイン） ----------
 
+  function getSortedCategories() {
+    return [...data.categories].sort((a, b) => a.order - b.order);
+  }
+
   function renderPanes() {
     panesEl.innerHTML = '';
     panesEl.style.setProperty('--pane-count', data.paneCount);
     panesEmptyHint.hidden = data.categories.length > 0;
 
-    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
+    const sorted = getSortedCategories();
 
     for (let paneIndex = 0; paneIndex < data.paneCount; paneIndex++) {
       const pane = document.createElement('div');
@@ -762,7 +778,7 @@
 
   function renderCategoryManage() {
     categoryManageListEl.innerHTML = '';
-    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
+    const sorted = getSortedCategories();
     sorted.forEach((category, index) => {
       categoryManageListEl.appendChild(buildCategoryManageItem(category, index, sorted.length));
     });
@@ -893,8 +909,7 @@
   }
 
   function findCategoryBySortedIndex(index) {
-    const sorted = [...data.categories].sort((a, b) => a.order - b.order);
-    return sorted[index];
+    return getSortedCategories()[index];
   }
 
   function swapOrder(categoryA, categoryB) {
@@ -912,8 +927,7 @@
     item.className = 'bookmark-item';
     item.dataset.bookmarkId = bookmark.id;
 
-    const preview = faviconImg(bookmark, 18);
-    preview.className = 'bm-favicon-preview';
+    const preview = faviconImg(bookmark, 18, 'bm-favicon-preview');
 
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
@@ -954,8 +968,7 @@
 
     function updatePreview() {
       const current = item.querySelector('.bm-favicon-preview');
-      const fresh = faviconImg(bookmark, 18);
-      fresh.className = 'bm-favicon-preview';
+      const fresh = faviconImg(bookmark, 18, 'bm-favicon-preview');
       if (current) current.replaceWith(fresh);
     }
 
@@ -1053,7 +1066,12 @@
           const newCategories = parsed.categories.map((c) => {
             const newId = createId();
             idMap.set(c.id, newId);
-            return { ...c, id: newId, order: data.categories.length + c.order };
+            return {
+              ...c,
+              id: newId,
+              pane: c.pane >= data.paneCount ? data.paneCount - 1 : c.pane,
+              order: data.categories.length + c.order
+            };
           });
           const newBookmarks = parsed.bookmarks.map((b) => ({
             ...b,
