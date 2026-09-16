@@ -395,6 +395,17 @@
         </div>
         <div class="domain-list" id="excluded-domain-list"></div>
       </div>
+      <div>
+        <label>favicon自動取得の代替ドメイン</label>
+        <p class="hint">サブドメイン単体ではfaviconを自動取得できないが、親ドメインなら取得できる場合などに、外部favicon取得サービスへ問い合わせる際のドメインを置き換えます（例: <code>sub.example.com</code> を登録すると <code>example.com</code> のfaviconを取得）。</p>
+        <div class="field-row">
+          <input type="text" id="favicon-alias-from-input" placeholder="例: sub.example.com">
+          <span>→</span>
+          <input type="text" id="favicon-alias-to-input" placeholder="例: example.com">
+          <button type="button" id="add-favicon-alias-btn">追加</button>
+        </div>
+        <div class="domain-list" id="favicon-alias-list"></div>
+      </div>
     </div>
   </details>
 
@@ -430,6 +441,10 @@
   const excludedDomainInput = document.getElementById('excluded-domain-input');
   const addExcludedDomainBtn = document.getElementById('add-excluded-domain-btn');
   const excludedDomainListEl = document.getElementById('excluded-domain-list');
+  const faviconAliasFromInput = document.getElementById('favicon-alias-from-input');
+  const faviconAliasToInput = document.getElementById('favicon-alias-to-input');
+  const addFaviconAliasBtn = document.getElementById('add-favicon-alias-btn');
+  const faviconAliasListEl = document.getElementById('favicon-alias-list');
 
   const addCategoryBtn = document.getElementById('add-category-btn');
   const categoryManageListEl = document.getElementById('category-manage-list');
@@ -446,7 +461,7 @@
   }
 
   function defaultData() {
-    return { paneCount: 2, categories: [], bookmarks: [], memos: [], excludedDomains: [] };
+    return { paneCount: 2, categories: [], bookmarks: [], memos: [], excludedDomains: [], faviconAliases: [] };
   }
 
   function loadData() {
@@ -500,7 +515,13 @@
       ? parsed.excludedDomains.filter((d) => typeof d === 'string' && d)
       : [];
 
-    return { paneCount, categories, bookmarks, memos, excludedDomains };
+    const faviconAliasMap = new Map();
+    (Array.isArray(parsed.faviconAliases) ? parsed.faviconAliases : [])
+      .filter((a) => a && typeof a === 'object' && typeof a.from === 'string' && a.from && typeof a.to === 'string' && a.to)
+      .forEach((a) => faviconAliasMap.set(a.from, a.to));
+    const faviconAliases = Array.from(faviconAliasMap, ([from, to]) => ({ from, to }));
+
+    return { paneCount, categories, bookmarks, memos, excludedDomains, faviconAliases };
   }
 
   function saveData() {
@@ -511,10 +532,10 @@
     }
   }
 
-  function isValidHttpUrl(url) {
+  function isValidBookmarkUrl(url) {
     try {
       const u = new URL(url);
-      return u.protocol === 'http:' || u.protocol === 'https:';
+      return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'file:';
     } catch (e) {
       return false;
     }
@@ -532,6 +553,11 @@
     return data.excludedDomains.some((d) => hostname === d || hostname.endsWith('.' + d));
   }
 
+  function resolveFaviconAliasHostname(hostname) {
+    const alias = data.faviconAliases.find((a) => hostname === a.from || hostname.endsWith('.' + a.from));
+    return alias ? alias.to : null;
+  }
+
   function resolveFaviconUrl(bookmark) {
     if (bookmark.favicon) return bookmark.favicon;
     const hostname = getHostname(bookmark.url);
@@ -539,7 +565,8 @@
     if (isExcludedDomain(hostname)) {
       return 'https://' + hostname + '/favicon.ico';
     }
-    return GOOGLE_FAVICON_BASE + '?sz=32&domain=' + encodeURIComponent(hostname);
+    const queryHostname = resolveFaviconAliasHostname(hostname) || hostname;
+    return GOOGLE_FAVICON_BASE + '?sz=32&domain=' + encodeURIComponent(queryHostname);
   }
 
   function faviconFallback() {
@@ -721,7 +748,7 @@
     const list = document.createElement('ul');
     list.className = 'bookmark-links';
 
-    const bookmarks = data.bookmarks.filter((b) => b.categoryId === category.id && isValidHttpUrl(b.url));
+    const bookmarks = data.bookmarks.filter((b) => b.categoryId === category.id && isValidBookmarkUrl(b.url));
     if (bookmarks.length === 0) {
       const li = document.createElement('li');
       li.className = 'empty-hint';
@@ -797,6 +824,46 @@
       renderPanes();
     }
     excludedDomainInput.value = '';
+  });
+
+  function renderFaviconAliases() {
+    faviconAliasListEl.innerHTML = '';
+    data.faviconAliases.forEach((alias) => {
+      const chip = document.createElement('span');
+      chip.className = 'domain-chip';
+      const text = document.createElement('span');
+      text.textContent = alias.from + ' → ' + alias.to;
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '×';
+      removeBtn.title = '削除';
+      removeBtn.addEventListener('click', () => {
+        data.faviconAliases = data.faviconAliases.filter((a) => a.from !== alias.from);
+        saveData();
+        renderFaviconAliases();
+        renderPanes();
+      });
+      chip.appendChild(text);
+      chip.appendChild(removeBtn);
+      faviconAliasListEl.appendChild(chip);
+    });
+  }
+
+  addFaviconAliasBtn.addEventListener('click', () => {
+    const from = faviconAliasFromInput.value.trim().toLowerCase();
+    const to = faviconAliasToInput.value.trim().toLowerCase();
+    if (!from || !to) return;
+    const existing = data.faviconAliases.find((a) => a.from === from);
+    if (existing) {
+      existing.to = to;
+    } else {
+      data.faviconAliases.push({ from, to });
+    }
+    saveData();
+    renderFaviconAliases();
+    renderPanes();
+    faviconAliasFromInput.value = '';
+    faviconAliasToInput.value = '';
   });
 
   // ---------- カテゴリ・ブックマーク管理 ----------
@@ -995,7 +1062,7 @@
     });
     urlInput.addEventListener('input', () => {
       bookmark.url = urlInput.value;
-      urlInput.classList.toggle('invalid', !!urlInput.value && !isValidHttpUrl(urlInput.value));
+      urlInput.classList.toggle('invalid', !!urlInput.value && !isValidBookmarkUrl(urlInput.value));
       saveData();
       updatePreview();
       renderPanes();
@@ -1013,7 +1080,7 @@
       if (current) current.replaceWith(fresh);
     }
 
-    urlInput.classList.toggle('invalid', !!urlInput.value && !isValidHttpUrl(urlInput.value));
+    urlInput.classList.toggle('invalid', !!urlInput.value && !isValidBookmarkUrl(urlInput.value));
 
     const actions = document.createElement('div');
     actions.className = 'row-actions';
@@ -1123,6 +1190,9 @@
           data.bookmarks = data.bookmarks.concat(newBookmarks);
           data.memos = data.memos.concat(parsed.memos.map((m) => ({ ...m, id: createId() })));
           data.excludedDomains = Array.from(new Set(data.excludedDomains.concat(parsed.excludedDomains)));
+          const aliasMap = new Map(data.faviconAliases.map((a) => [a.from, a.to]));
+          parsed.faviconAliases.forEach((a) => aliasMap.set(a.from, a.to));
+          data.faviconAliases = Array.from(aliasMap, ([from, to]) => ({ from, to }));
         }
         resetMemoForm();
         saveData();
@@ -1141,6 +1211,7 @@
     renderPanes();
     renderPaneCountSelect();
     renderExcludedDomains();
+    renderFaviconAliases();
     renderCategoryManage();
   }
 
