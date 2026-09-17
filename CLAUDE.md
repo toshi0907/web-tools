@@ -20,7 +20,7 @@ python3 -m http.server 8000
 
 - `index.html` — トップのランディングページ。実行時に `apps.json` を fetch し、`#app-grid` に1エントリ1カード（各アプリの `icon.svg` とアプリ名を横並びで表示するリンクを縦1列に並べたもの。`description` はカードには表示しない）として描画する。個々のアプリの情報をビルド時に持たない。
 - `apps.json` — ランディングページに表示するアプリの唯一の情報源。各エントリは `{ "name": ..., "path": "apps/<アプリ名>/", "description": ... }` の形式。`apps/` 配下に `index.html` を置くだけではランディングページに表示されず、必ずここにもエントリを追加する必要がある。`description` はランディングページのカードには表示されないが、README.mdのアプリ一覧などに使うため引き続き記述する。
-- `apps/<アプリ名>/index.html` — 各アプリはHTML1ファイル（マークアップ＋インライン`<script>`）で完結し、共通スタイルとして `../../assets/style.css` を、トップページへの導線として `.back-link` から `../../index.html` を参照する。アプリ間でJSコードを共有したり、個別のビルド処理を持ったりはしない。
+- `apps/<アプリ名>/index.html` — 各アプリはHTML1ファイル（マークアップ＋インライン`<script>`）で完結し、共通スタイルとして `../../assets/style.css` を、トップページへの導線として `.back-link` から `../../index.html` を参照する。個別のビルド処理は持たない。アプリ間のJSコード共有は基本的に行わないが、`assets/import-export.js`（後述のエクスポート・インポート処理）のように複数アプリで確実に必要になる汎用処理に限り、`assets/` 配下の共通スクリプトとして切り出し、各アプリの `index.html` から `<script src="../../assets/xxx.js"></script>` で読み込む。
 - 各アプリディレクトリには `index.html` に加えて `manifest.json` / `icon.svg` / `sw.js` を置き、そのアプリ単体をChromeに「インストール」できるようにしている（詳細は後述）。
 - `apps/_template/` — 新しいアプリを作る際にコピーするひな形。共通スタイルシートと戻るリンク、Chromeインストール対応用の `manifest.json`/`icon.svg`/`sw.js` が既に組み込まれている。
 - `assets/style.css` — ランディングページと全アプリで使う共通スタイル（`.page`, `.page-header`, `.back-link`、ランディングページ用の `.app-grid`/`.app-card` など）。
@@ -42,8 +42,8 @@ python3 -m http.server 8000
 
 - エクスポート: 保存しているデータをJSON等の形式でファイルとしてダウンロードできるボタンを用意する。
 - インポート: エクスポートしたファイルを選択して読み込み、既存データへの「追加」または「置き換え」を選べるようにする。
-- 実装例として `apps/regex-replacer/` を参照。
-- 画像やホワイトボードの描画などテキストで表現しづらいデータの場合も、個別ダウンロードやZIPでの一括ダウンロードなど、可能な範囲でエクスポート手段を検討する。
+- データがJSONでそのまま表現できる場合は、共通スクリプト `assets/import-export.js` の `ImportExport.exportJson(data, filename)` / `ImportExport.importJson({ onImport, onError })` を利用する（ファイル名の生成には `ImportExport.timestampedFilename(prefix)` が使える）。アプリの `index.html` で `<script src="../../assets/import-export.js"></script>` を読み込んでから使用する。実装例として `apps/regex-replacer/` や `apps/home-dashboard/` を参照。
+- 画像やホワイトボードの描画などテキストで表現しづらいデータの場合は、`ImportExport` の対象外のため、個別ダウンロードやZIPでの一括ダウンロードなど、可能な範囲でエクスポート手段を検討する。
 
 ## 新しいアプリの追加手順
 
