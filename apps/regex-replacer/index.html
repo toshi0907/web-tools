@@ -297,7 +297,6 @@
       <button type="button" class="primary" id="add-set-btn">セットを追加</button>
       <button type="button" id="export-btn">エクスポート</button>
       <button type="button" id="import-btn">インポート</button>
-      <input type="file" id="import-file" accept="application/json" hidden>
     </div>
   </div>
 
@@ -318,6 +317,7 @@
   </div>
 </div>
 
+<script src="../../assets/import-export.js"></script>
 <script>
 (function () {
   const STORAGE_KEY = 'regex-replacer-sets';
@@ -328,7 +328,6 @@
 
   const exportBtn = document.getElementById('export-btn');
   const importBtn = document.getElementById('import-btn');
-  const importFile = document.getElementById('import-file');
 
   const inputText = document.getElementById('input-text');
   const outputText = document.getElementById('output-text');
@@ -657,31 +656,12 @@
   });
 
   exportBtn.addEventListener('click', () => {
-    const data = JSON.stringify(sets, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const filename = 'regex-sets_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
-      '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.json';
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    ImportExport.exportJson(sets, ImportExport.timestampedFilename('regex-sets'));
   });
 
-  importBtn.addEventListener('click', () => importFile.click());
-
-  importFile.addEventListener('change', () => {
-    const file = importFile.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result));
+  importBtn.addEventListener('click', () => {
+    ImportExport.importJson({
+      onImport: (parsed) => {
         if (!Array.isArray(parsed)) throw new Error('配列形式のJSONではありません。');
         const imported = parsed.filter(isValidSetShape).map((item) => normalizeSet({ ...item, id: null }));
         if (imported.length === 0) {
@@ -696,13 +676,8 @@
         saveSets();
         renderSets();
         runTransform();
-      } catch (e) {
-        alert('インポートに失敗しました: ' + e.message);
-      } finally {
-        importFile.value = '';
       }
-    };
-    reader.readAsText(file);
+    });
   });
 
   renderSets();

@@ -11,7 +11,8 @@
 ├── index.html          # 各アプリへのリンク一覧（トップページ）
 ├── apps.json           # index.html が読み込むアプリ一覧データ
 ├── assets/
-│   └── style.css        # 共通スタイル
+│   ├── style.css        # 共通スタイル
+│   └── import-export.js  # 共通のJSONエクスポート・インポート処理
 ├── apps/
 │   ├── _template/               # 新しいアプリを作る際のひな形
 │   ├── favicon-generator/         # favicon作成ツール

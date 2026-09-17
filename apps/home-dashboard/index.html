@@ -420,10 +420,10 @@
   <div class="toolbar">
     <button type="button" id="export-btn">エクスポート</button>
     <button type="button" id="import-btn">インポート</button>
-    <input type="file" id="import-file" accept="application/json" hidden>
   </div>
 </div>
 
+<script src="../../assets/import-export.js"></script>
 <script>
 (function () {
   const STORAGE_KEY = 'home-dashboard-data';
@@ -451,7 +451,6 @@
 
   const exportBtn = document.getElementById('export-btn');
   const importBtn = document.getElementById('import-btn');
-  const importFile = document.getElementById('import-file');
 
   let data = loadData();
 
@@ -1138,30 +1137,13 @@
   // ---------- エクスポート・インポート ----------
 
   exportBtn.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const filename = 'home-dashboard_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) +
-      '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.json';
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    ImportExport.exportJson(data, ImportExport.timestampedFilename('home-dashboard'));
   });
 
-  importBtn.addEventListener('click', () => importFile.click());
-
-  importFile.addEventListener('change', () => {
-    const file = importFile.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = normalizeData(JSON.parse(String(reader.result)));
+  importBtn.addEventListener('click', () => {
+    ImportExport.importJson({
+      onImport: (parsed) => {
+        parsed = normalizeData(parsed);
         const replace = confirm(
           'データを読み込みました（カテゴリ' + parsed.categories.length + '件、ブックマーク' + parsed.bookmarks.length +
           '件、メモ' + parsed.memos.length + '件）。\n' +
@@ -1197,13 +1179,8 @@
         resetMemoForm();
         saveData();
         renderAll();
-      } catch (e) {
-        alert('インポートに失敗しました: ' + e.message);
-      } finally {
-        importFile.value = '';
       }
-    };
-    reader.readAsText(file);
+    });
   });
 
   function renderAll() {
