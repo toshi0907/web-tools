@@ -72,3 +72,14 @@ README.md はこのリポジトリの唯一のドキュメントであり、実�
 - `icon.svg` — ブランドカラー（`#3457d5`）の角丸背景に白文字1文字を配置しただけのシンプルなベクターアイコン。192x192/512x512として`manifest.json`から参照される。
 - `sw.js` — キャッシュは行わない最小限のService Worker。Chromeのインストール要件を満たすためだけに登録している。
 - 各 `index.html` の `<head>` に `<link rel="manifest">` と `<link rel="icon">`、`<meta name="theme-color">` を、`<body>` 内に `sw.js` を登録する小さな `<script>` を追加している。
+
+## myskillsスキルの利用について
+
+[myskills](https://github.com/toshi0907/myskills) リポジトリを `.myskills` にsubmoduleとして追加してある。myskills側の[組み込み手順](https://github.com/toshi0907/myskills/blob/main/docs/skill-integration-submodule.md)に従って以下を設定すると、`.claude/skills/` からスキルを利用できるようになる（このコミットの時点ではまだ未設置）。
+
+1. `.claude/skills` を `.myskills/claude-skills` へのsymlinkにする。
+2. Claude Code on the web（使い捨て環境）向けに、セッション開始時に `.myskills` を最新化するSessionStart hook（`.myskills/scripts/session-start-hook/` を参照）を設置する。外部リポジトリ由来のスクリプトを自動実行させる設定になるため、内容を確認した上でリポジトリ管理者が設置すること。
+
+設置後は、実装作業を始める前に `.claude/skills/` にあるスキルの一覧と各 `SKILL.md` の description を確認し、該当するものがあれば優先的に使うこと。
+
+myskills側の更新を取り込みたい場合は `git submodule update --init --remote -- .myskills` を実行する。
