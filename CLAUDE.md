@@ -75,11 +75,18 @@ README.md はこのリポジトリの唯一のドキュメントであり、実�
 
 ## myskillsスキルの利用について
 
-[myskills](https://github.com/toshi0907/myskills) リポジトリを `.myskills` にsubmoduleとして追加してある。myskills側の[組み込み手順](https://github.com/toshi0907/myskills/blob/main/docs/skill-integration-submodule.md)に従って以下を設定すると、`.claude/skills/` からスキルを利用できるようになる（このコミットの時点ではまだ未設置）。
+[myskills](https://github.com/toshi0907/myskills) リポジトリを `.myskills` にsubmoduleとして追加してあり、myskills側の[組み込み手順](https://github.com/toshi0907/myskills/blob/main/docs/skill-integration-submodule.md)（submodule + symlink方式、スキルごとにsymlinkを登録する版）に従って組み込み済み。
 
-1. `.claude/skills` を `.myskills/claude-skills` へのsymlinkにする。
-2. Claude Code on the web（使い捨て環境）向けに、セッション開始時に `.myskills` を最新化するSessionStart hook（`.myskills/scripts/session-start-hook/` を参照）を設置する。外部リポジトリ由来のスクリプトを自動実行させる設定になるため、内容を確認した上でリポジトリ管理者が設置すること。
+- `.claude/skills` は実ディレクトリで、その配下に `.myskills/claude-skills/<スキル名>` へのsymlinkをスキルごとに登録してある（`.claude/skills` 自体はsymlinkにしない）。このリポジトリ固有のローカルスキルを追加したい場合は、同じ `.claude/skills/` 内に通常のディレクトリとして共存させられる。
+- Claude Code on the web（使い捨て環境）向けに、セッション開始時に `.myskills` submoduleの最新化と、myskills側で新しく追加されたスキルのsymlink登録（未登録のものだけ。既存のsymlinkやローカルスキルは上書きしない）を行うSessionStart hook `.claude/hooks/myskills-skills-sync.sh`（`.claude/settings.json` に登録）を設置してある。外部リポジトリ由来のスクリプトを自動実行させる設定のため、更新する場合は内容を確認した上でリポジトリ管理者が反映すること。
 
-設置後は、実装作業を始める前に `.claude/skills/` にあるスキルの一覧と各 `SKILL.md` の description を確認し、該当するものがあれば優先的に使うこと。
+実装作業を始める前に、`.claude/skills/` にあるスキルの一覧と各 `SKILL.md` の description を確認し、該当するものがあれば優先的に使うこと。
 
-myskills側の更新を取り込みたい場合は `git submodule update --init --remote -- .myskills` を実行する。
+myskills側の更新を取り込みたい場合（ローカル環境など、上記hookが自動実行されない場合）は、以下を実行する。
+
+```bash
+git submodule update --init --remote -- .myskills
+bash .myskills/scripts/session-start-hook/myskills-skills-sync.sh
+```
+
+myskills側でスキルの名前を変更・削除した場合、このリポジトリに残った古いsymlinkは自動では消えないため、手動で削除する。
