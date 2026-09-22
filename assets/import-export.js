@@ -3,16 +3,11 @@
 (function (global) {
   'use strict';
 
-  function pad2(n) {
-    return String(n).padStart(2, '0');
-  }
-
   // 例: timestampedFilename('regex-sets') -> "regex-sets_20260917-1200.json"
+  // 実体は assets/filename.js の Filename.timestamped()。このアプリの index.html で
+  // import-export.js より先に filename.js を読み込んでおくこと。
   function timestampedFilename(prefix, ext) {
-    const now = new Date();
-    const stamp = now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) +
-      '-' + pad2(now.getHours()) + pad2(now.getMinutes());
-    return prefix + '_' + stamp + '.' + (ext || 'json');
+    return global.Filename.timestamped(prefix, ext);
   }
 
   function exportJson(data, filename) {

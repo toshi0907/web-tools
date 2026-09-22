@@ -9,6 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3457d5">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+<script src="../../assets/filename.js"></script>
 <style>
   .field {
     margin-bottom: 1rem;
@@ -467,10 +468,6 @@ if ('serviceWorker' in navigator) {
     return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}_${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
   }
 
-  function formatZipTimestamp(date) {
-    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
-  }
-
   function findExifTiffOffset(view) {
     if (view.byteLength < 4 || view.getUint16(0, false) !== 0xffd8) {
       return null;
@@ -642,7 +639,7 @@ if ('serviceWorker' in navigator) {
       pendingZip = {
         blob: zipBlob,
         url: URL.createObjectURL(zipBlob),
-        fileName: `resized_images_${formatZipTimestamp(new Date())}.zip`,
+        fileName: Filename.timestamped('resized_images', 'zip'),
       };
       downloadBtn.hidden = false;
       if (shareSupported) {
