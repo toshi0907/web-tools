@@ -12,6 +12,7 @@
 ├── apps.json           # index.html が読み込むアプリ一覧データ
 ├── assets/
 │   ├── style.css        # 共通スタイル
+│   ├── filename.js       # 共通のタイムスタンプ付きファイル名生成処理
 │   └── import-export.js  # 共通のJSONエクスポート・インポート処理
 ├── apps/
 │   ├── _template/               # 新しいアプリを作る際のひな形

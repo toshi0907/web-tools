@@ -9,6 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3457d5">
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" integrity="sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI" crossorigin="anonymous"></script>
+<script src="../../assets/filename.js"></script>
 <style>
   .field {
     margin-bottom: 1rem;
@@ -442,14 +443,6 @@ if ('serviceWorker' in navigator) {
     });
   }
 
-  function pad2(n) {
-    return String(n).padStart(2, '0');
-  }
-
-  function formatTimestamp(date) {
-    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
-  }
-
   async function buildPdf(snapshot) {
     const pdfDoc = await PDFLib.PDFDocument.create();
     const [pageW, pageH] = A4;
@@ -507,7 +500,7 @@ if ('serviceWorker' in navigator) {
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `${formatTimestamp(new Date())}.pdf`;
+      link.download = `${Filename.timestamp()}.pdf`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);

@@ -42,7 +42,7 @@ python3 -m http.server 8000
 
 - エクスポート: 保存しているデータをJSON等の形式でファイルとしてダウンロードできるボタンを用意する。
 - インポート: エクスポートしたファイルを選択して読み込み、既存データへの「追加」または「置き換え」を選べるようにする。
-- データがJSONでそのまま表現できる場合は、共通スクリプト `assets/import-export.js` の `ImportExport.exportJson(data, filename)` / `ImportExport.importJson({ onImport, onError })` を利用する（ファイル名の生成には `ImportExport.timestampedFilename(prefix)` が使える）。アプリの `index.html` で `<script src="../../assets/import-export.js"></script>` を読み込んでから使用する。実装例として `apps/regex-replacer/` や `apps/home-dashboard/` を参照。
+- データがJSONでそのまま表現できる場合は、共通スクリプト `assets/import-export.js` の `ImportExport.exportJson(data, filename)` / `ImportExport.importJson({ onImport, onError })` を利用する（ファイル名の生成には `ImportExport.timestampedFilename(prefix)` が使える。内部では `assets/filename.js` の `Filename.timestamped(prefix, ext)` に委譲しているため、`timestampedFilename` を使うアプリは `filename.js` を `import-export.js` より先に読み込む）。アプリの `index.html` で `<script src="../../assets/filename.js"></script>` `<script src="../../assets/import-export.js"></script>` の順で読み込んでから使用する。実装例として `apps/regex-replacer/` や `apps/home-dashboard/` を参照。JSON以外（ZIP/PDFなど）のダウンロードでタイムスタンプ付きファイル名だけ必要な場合は `assets/filename.js` の `Filename.timestamped(prefix, ext)` / `Filename.timestamp()` を単独で使う（実装例: `apps/image-resize-zip/`, `apps/photo-to-pdf/`）。
 - 画像やホワイトボードの描画などテキストで表現しづらいデータの場合は、`ImportExport` の対象外のため、個別ダウンロードやZIPでの一括ダウンロードなど、可能な範囲でエクスポート手段を検討する。
 
 ## 新しいアプリの追加手順
