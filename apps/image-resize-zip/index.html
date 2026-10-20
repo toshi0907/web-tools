@@ -232,6 +232,13 @@ if ('serviceWorker' in navigator) {
 
   let entries = [];
   let pendingZip = null;
+  // ZIPの共有に失敗した端末（Android版Chromeなど、Web Share APIで共有できるファイル形式にZIPが含まれない環境）では、
+  // 以降はリサイズ済みの画像ファイルをそのまま共有する
+  let shareAsImages = false;
+
+  function updateShareBtnLabel() {
+    shareBtn.textContent = shareAsImages ? '画像を個別に共有（メールで送るなど）' : '共有（メールで送るなど）';
+  }
 
   function setStatus(message, type) {
     statusEl.textContent = message;
@@ -609,6 +616,7 @@ if ('serviceWorker' in navigator) {
 
     try {
       const zip = new JSZip();
+      const resizedImages = [];
 
       for (let i = 0; i < entries.length; i++) {
         const { file, img, outputName } = entries[i];
@@ -632,6 +640,7 @@ if ('serviceWorker' in navigator) {
         const blob = await canvasToBlob(canvas, mime);
 
         zip.file(outputName, blob);
+        resizedImages.push({ name: outputName, blob, type: mime });
       }
 
       setStatus('ZIPを生成しています…', 'info');
@@ -640,6 +649,7 @@ if ('serviceWorker' in navigator) {
         blob: zipBlob,
         url: URL.createObjectURL(zipBlob),
         fileName: Filename.timestamped('resized_images', 'zip'),
+        images: resizedImages,
       };
       downloadBtn.hidden = false;
       if (shareSupported) {
@@ -664,21 +674,64 @@ if ('serviceWorker' in navigator) {
     link.click();
   });
 
-  shareBtn.addEventListener('click', async () => {
-    if (!pendingZip) {
+  function switchToImageShare(message) {
+    shareAsImages = true;
+    updateShareBtnLabel();
+    setStatus(message, 'error');
+  }
+
+  async function shareImages() {
+    const files = pendingZip.images.map((image) => new File([image.blob], image.name, { type: image.type }));
+    if (!navigator.canShare({ files })) {
+      setStatus('この端末・ブラウザは画像ファイルの共有に対応していません。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。', 'error');
       return;
     }
+    try {
+      await navigator.share({ files, title: pendingZip.fileName });
+      setStatus(`${files.length} 個の画像を共有しました。`, 'success');
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        setStatus(`共有に失敗しました（${err.name}）。一度に共有できる枚数・サイズに上限がある場合があります。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。`, 'error');
+      }
+    }
+  }
+
+  async function shareZip() {
     const file = new File([pendingZip.blob], pendingZip.fileName, { type: 'application/zip' });
     if (!navigator.canShare({ files: [file] })) {
-      setStatus('この端末・ブラウザはZIPファイルの共有に対応していません。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。', 'error');
+      // ユーザー操作の権限を消費していないので、そのまま画像の共有を試せる
+      shareAsImages = true;
+      updateShareBtnLabel();
+      await shareImages();
       return;
     }
     try {
       await navigator.share({ files: [file], title: pendingZip.fileName });
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        setStatus('共有に失敗しました。「ZIPをダウンロード」からファイルを保存し、メールに手動で添付してください。', 'error');
+      if (err.name === 'AbortError') {
+        return;
       }
+      // share() の呼び出しでユーザー操作の権限が消費されているため、続けて画像を共有することはできない。
+      // ボタンを画像の個別共有に切り替え、もう一度押してもらう
+      switchToImageShare(`この端末ではZIPファイルを共有できませんでした（${err.name}）。もう一度「画像を個別に共有」ボタンを押すと、リサイズ済みの画像をそのまま共有できます。`);
+    }
+  }
+
+  shareBtn.addEventListener('click', async () => {
+    if (!pendingZip) {
+      return;
+    }
+    // 共有シートを開いている間に再度押されると、2回目の share() が InvalidStateError で失敗し
+    // 画像共有モードに誤って切り替わるため、共有が終わるまでボタンを無効化する
+    shareBtn.disabled = true;
+    try {
+      if (shareAsImages) {
+        await shareImages();
+      } else {
+        await shareZip();
+      }
+    } finally {
+      shareBtn.disabled = false;
     }
   });
 </script>
