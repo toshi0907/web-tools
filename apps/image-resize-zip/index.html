@@ -721,10 +721,17 @@ if ('serviceWorker' in navigator) {
     if (!pendingZip) {
       return;
     }
-    if (shareAsImages) {
-      await shareImages();
-    } else {
-      await shareZip();
+    // 共有シートを開いている間に再度押されると、2回目の share() が InvalidStateError で失敗し
+    // 画像共有モードに誤って切り替わるため、共有が終わるまでボタンを無効化する
+    shareBtn.disabled = true;
+    try {
+      if (shareAsImages) {
+        await shareImages();
+      } else {
+        await shareZip();
+      }
+    } finally {
+      shareBtn.disabled = false;
     }
   });
 </script>
